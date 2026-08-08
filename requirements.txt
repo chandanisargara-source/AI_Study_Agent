@@ -8,4 +8,4 @@ passlib[bcrypt]
 python-jose[cryptography]
 python-dotenv
 google-genai
-PyMuPDF
+PyMuPDFpypdf
