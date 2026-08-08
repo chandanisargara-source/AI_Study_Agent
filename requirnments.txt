@@ -1,0 +1,6 @@
+fastapi
+unicorn
+python-dotenv
+google-genai
+pydantic
+reportlab
