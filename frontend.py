@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide"
 )
 
-BACKEND_URL = "http://127.0.0.1:8000"
+BACKEND_URL = "https://ai-study-agent-xqis.onrender.com"
 
 
 if "token" not in st.session_state:
@@ -72,6 +72,10 @@ if st.session_state.token is None:
             if response.status_code == 200:
 
                 data = response.json()
+
+                if "access_token" not in data:
+                    st.error(f"Login response: {data}")
+                    st.stop()
 
                 st.session_state.token = data["access_token"]
 
