@@ -7,6 +7,7 @@ from schemas.user_schema import UserCreate, UserLogin
 from services.security import hash_password, verify_password
 from auth.jwt import create_access_token
 
+
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"]
@@ -20,17 +21,16 @@ def signup(
 ):
 
     existing_user = db.query(User).filter(
-        User.email == user.email
+        User.name == user.name
     ).first()
 
     if existing_user:
         return {
-            "message": "Email already exists"
+            "message": "Name already exists"
         }
 
     new_user = User(
         name=user.name,
-        email=user.email,
         password=hash_password(user.password),
         role=user.role
     )
@@ -52,7 +52,7 @@ def login(
 ):
 
     existing_user = db.query(User).filter(
-        User.email == user.email
+        User.name == user.name
     ).first()
 
     if not existing_user:
@@ -68,11 +68,10 @@ def login(
             "message": "Wrong password"
         }
 
-
     token = create_access_token(
         {
             "user_id": existing_user.id,
-            "email": existing_user.email,
+            "name": existing_user.name,
             "role": existing_user.role
         }
     )
