@@ -47,62 +47,161 @@ if "report" not in st.session_state:
 
 if st.session_state.token is None:
 
-    st.title("🔐 AI Study Agent Login")
+    st.title("🔐 AI Study Agent")
 
-    email = st.text_input("Email")
+    # Login / Sign Up selection
+    mode = st.radio(
+        "Choose an option",
+        ["Login", "Sign Up"],
+        horizontal=True
+    )
+
+    name = st.text_input("Name")
 
     password = st.text_input(
         "Password",
         type="password"
     )
 
+    if mode == "Login":
 
-    if st.button("Login"):
+        if st.button("Login"):
 
-        try:
-
-            response = requests.post(
-                f"{BACKEND_URL}/auth/login",
-                json={
-                    "email": email,
-                    "password": password
-                }
-            )
-
-            if response.status_code == 200:
-
-                data = response.json()
-
-                if "access_token" not in data:
-                    st.error(f"Login response: {data}")
-                    st.stop()
-
-                st.session_state.token = data["access_token"]
-
-                headers = {
-                    "Authorization": f"Bearer {st.session_state.token}"
-                }
-
-                user_response = requests.get(
-                    f"{BACKEND_URL}/users/me",
-                    headers=headers
+            try:
+                response = requests.post(
+                    f"{BACKEND_URL}/auth/login",
+                    json={
+                        "name": name,
+                        "password": password
+                    },
+                    timeout=30
                 )
 
-                if user_response.status_code == 200:
-                    st.session_state.user = user_response.json()
+                if response.status_code != 200:
 
-                st.success("Login Successful 🎉")
-                st.rerun()
+                    try:
+                        error_data = response.json()
+                        st.error(
+                            f"Login failed: {error_data}"
+                        )
+                    except Exception:
+                        st.error(
+                            f"Login failed ({response.status_code}): "
+                            f"{response.text}"
+                        )
 
-            else:
-                st.error("Invalid Email or Password")
+                else:
 
+                    try:
+                        data = response.json()
+                    except Exception:
+                        st.error(
+                            "Backend did not return valid JSON."
+                        )
+                        st.code(response.text)
+                        st.stop()
 
-        except Exception as e:
-            st.error(str(e))
+                    if "access_token" not in data:
 
+                        st.error(
+                            f"Login response: {data}"
+                        )
+                        st.stop()
 
-    st.stop()
+                    # Save token
+                    st.session_state.token = data[
+                        "access_token"
+                    ]
+
+                    # Get logged-in user
+                    headers = {
+                        "Authorization":
+                        f"Bearer {st.session_state.token}"
+                    }
+
+                    user_response = requests.get(
+                        f"{BACKEND_URL}/users/me",
+                        headers=headers,
+                        timeout=30
+                    )
+
+                    if user_response.status_code == 200:
+
+                        try:
+                            st.session_state.user = (
+                                user_response.json()
+                            )
+                        except Exception:
+                            st.session_state.user = None
+
+                    st.success(
+                        "Login Successful 🎉"
+                    )
+
+                    st.rerun()
+
+            except requests.exceptions.RequestException as e:
+
+                st.error(
+                    f"Connection error: {e}"
+                )
+
+            except Exception as e:
+
+                st.error(
+                    f"Unexpected error: {e}"
+                )
+
+    else:
+
+        if st.button("Create Account"):
+
+            try:
+                response = requests.post(
+                    f"{BACKEND_URL}/auth/signup",
+                    json={
+                        "name": name,
+                        "password": password
+                    },
+                    timeout=30
+                )
+
+                if response.status_code in [200, 201]:
+
+                    st.success(
+                        "Account created successfully! 🎉"
+                    )
+
+                    st.info(
+                        "Now select Login and sign in."
+                    )
+
+                else:
+
+                    try:
+                        error_data = response.json()
+                        st.error(
+                            f"Sign Up failed: {error_data}"
+                        )
+                    except Exception:
+                        st.error(
+                            f"Sign Up failed ({response.status_code}): "
+                            f"{response.text}"
+                        )
+
+            except requests.exceptions.RequestException as e:
+
+                st.error(
+                    f"Connection error: {e}"
+                )
+
+            except Exception as e:
+
+                st.error(
+                    f"Unexpected error: {e}"
+                )
+
+st.stop()
 
 # Sidebar
 st.sidebar.title("📋 Dashboard")
