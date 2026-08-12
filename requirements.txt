@@ -11,3 +11,4 @@ google-genai
 PyMuPDF
 pypdf
 reportlab
+streamlit-mic-recorder
