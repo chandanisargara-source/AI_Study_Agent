@@ -4,7 +4,7 @@ python-multipart
 pydantic
 pydantic[email]
 sqlalchemy
-passlib[bcrypt]
+bcrypt
 python-jose[cryptography]
 python-dotenv
 google-genai
