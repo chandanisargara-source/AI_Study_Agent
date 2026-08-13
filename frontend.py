@@ -167,8 +167,6 @@ if st.session_state.token is None:
                         )
 
 
-                        # Get user information
-
                         headers = {
                             "Authorization":
                             f"Bearer {st.session_state.token}"
@@ -682,6 +680,18 @@ elif st.session_state.step == "interview":
 
 
         # =================================================
+        # VOICE ANSWER STORAGE
+        # =================================================
+
+        voice_key = f"voice_answer_{index}"
+
+
+        if voice_key not in st.session_state:
+
+            st.session_state[voice_key] = ""
+
+
+        # =================================================
         # TEXT ANSWER
         # =================================================
 
@@ -697,6 +707,7 @@ elif st.session_state.step == "interview":
 
         answer = st.text_area(
             "⌨️ Type your answer:",
+            value=st.session_state[voice_key],
             height=150,
             key=f"answer_{index}"
         )
@@ -706,7 +717,7 @@ elif st.session_state.step == "interview":
 
 
         # =================================================
-        # VOICE ANSWER
+        # VOICE RECORDING
         # =================================================
 
         st.subheader(
@@ -715,8 +726,8 @@ elif st.session_state.step == "interview":
 
 
         st.caption(
-            "Speak your answer. "
-            "It will automatically be converted into text."
+            "Speak your answer and it will automatically "
+            "be converted into text."
         )
 
 
@@ -745,12 +756,16 @@ elif st.session_state.step == "interview":
                 recognizer = sr.Recognizer()
 
 
+                # -------------------------------------------------
                 # Get recorded audio
+                # -------------------------------------------------
 
                 audio_data = audio["bytes"]
 
 
-                # Convert audio to WAV
+                # -------------------------------------------------
+                # Convert audio to WAV using pydub
+                # -------------------------------------------------
 
                 audio_segment = AudioSegment.from_file(
                     io.BytesIO(audio_data)
@@ -769,7 +784,9 @@ elif st.session_state.step == "interview":
                 wav_buffer.seek(0)
 
 
+                # -------------------------------------------------
                 # Read WAV audio
+                # -------------------------------------------------
 
                 audio_file = sr.AudioFile(
                     wav_buffer
@@ -783,7 +800,9 @@ elif st.session_state.step == "interview":
                     )
 
 
-                # Voice to text
+                # -------------------------------------------------
+                # Speech to Text
+                # -------------------------------------------------
 
                 with st.spinner(
                     "📝 Converting voice to text..."
@@ -795,11 +814,12 @@ elif st.session_state.step == "interview":
                     )
 
 
-                # Save voice text in answer box
+                # -------------------------------------------------
+                # IMPORTANT:
+                # Do NOT modify answer_0 / answer_1 widget state
+                # -------------------------------------------------
 
-                st.session_state[
-                    f"answer_{index}"
-                ] = voice_text
+                st.session_state[voice_key] = voice_text
 
 
                 st.success(
@@ -853,13 +873,26 @@ elif st.session_state.step == "interview":
             key=f"next_question_{index}"
         ):
 
-            answer = st.session_state.get(
+            # Get answer from text widget
+
+            final_answer = st.session_state.get(
                 f"answer_{index}",
                 ""
             )
 
 
-            if not answer.strip():
+            # If text widget is empty,
+            # use voice answer
+
+            if not final_answer.strip():
+
+                final_answer = st.session_state.get(
+                    voice_key,
+                    ""
+                )
+
+
+            if not final_answer.strip():
 
                 st.warning(
                     "⌨️ Please type an answer "
@@ -872,7 +905,7 @@ elif st.session_state.step == "interview":
                 st.session_state.answers.append(
                     {
                         "question": current_question,
-                        "answer": answer
+                        "answer": final_answer
                     }
                 )
 
