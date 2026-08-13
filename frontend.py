@@ -1,5 +1,7 @@
 import streamlit as st
 import requests
+from gtts import gTTS
+import speech_recognition as sr
 from report import generate_pdf_report
 from streamlit_mic_recorder import mic_recorder
 
@@ -21,6 +23,22 @@ st.set_page_config(
 
 BACKEND_URL = "https://ai-study-agent-xqis.onrender.com"
 
+# ==========================
+# TEXT TO SPEECH
+# ==========================
+
+def speak_question(text):
+
+    tts = gTTS(
+        text=text,
+        lang="en"
+    )
+
+    audio_file = "question_audio.mp3"
+
+    tts.save(audio_file)
+
+    return audio_file
 
 # ==========================
 # SESSION STATE
@@ -592,7 +610,6 @@ elif st.session_state.step == "interview":
 
     index = st.session_state.current_q_index
 
-
     if not questions:
 
         st.error(
@@ -608,31 +625,73 @@ elif st.session_state.step == "interview":
 
             st.rerun()
 
-
     else:
+
+        current_question = questions[index]
 
         st.subheader(
             f"💬 Interview Question "
             f"{index + 1}/{len(questions)}"
         )
 
+        # ==========================
+        # AI QUESTION
+        # ==========================
 
         st.info(
-            questions[index]
+            current_question
         )
 
+        # ==========================
+        # 🔊 LISTEN TO QUESTION
+        # ==========================
+
+        if st.button(
+            "🔊 Listen Question",
+            key=f"listen_question_{index}"
+        ):
+
+            try:
+
+                audio_file = speak_question(
+                    current_question
+                )
+
+                with open(
+                    audio_file,
+                    "rb"
+                ) as audio:
+
+                    st.audio(
+                        audio.read(),
+                        format="audio/mp3"
+                    )
+
+            except Exception as e:
+
+                st.error(
+                    f"Voice generation failed: {e}"
+                )
+
+        st.divider()
+
+        # ==========================
+        # ⌨️ TEXT ANSWER
+        # ==========================
 
         answer = st.text_area(
-            "Your Answer:",
+            "⌨️ Your Answer:",
             height=150,
             key=f"answer_{index}"
         )
-
 
         st.write(
             "🎤 Or answer using your voice"
         )
 
+        # ==========================
+        # 🎤 VOICE RECORDING
+        # ==========================
 
         audio = mic_recorder(
             start_prompt="🎙️ Start Recording",
@@ -640,20 +699,31 @@ elif st.session_state.step == "interview":
             key=f"voice_recorder_{index}"
         )
 
-
         if audio:
 
             st.success(
-                "Voice recorded successfully!"
+                "✅ Voice recorded successfully!"
             )
 
+            st.audio(
+                audio["bytes"],
+                format="audio/wav"
+            )
+
+            st.info(
+                "Voice recording received. "
+                "For now, use the text box for the final answer."
+            )
+
+        # ==========================
+        # NEXT / SUBMIT
+        # ==========================
 
         button_text = (
             "Next Question ➡️"
             if index < len(questions) - 1
             else "Submit Interview 🎓"
         )
-
 
         if st.button(
             button_text,
@@ -666,23 +736,20 @@ elif st.session_state.step == "interview":
                     "કૃપા કરીને જવાબ લખો"
                 )
 
-
             else:
 
                 st.session_state.answers.append(
                     {
-                        "question": questions[index],
+                        "question": current_question,
                         "answer": answer
                     }
                 )
-
 
                 if index < len(questions) - 1:
 
                     st.session_state.current_q_index += 1
 
                     st.rerun()
-
 
                 else:
 
@@ -701,7 +768,6 @@ elif st.session_state.step == "interview":
                             st.session_state.answers
                         }
 
-
                         try:
 
                             response = requests.post(
@@ -709,7 +775,6 @@ elif st.session_state.step == "interview":
                                 json=payload,
                                 timeout=120
                             )
-
 
                             if response.status_code == 200:
 
@@ -731,14 +796,11 @@ elif st.session_state.step == "interview":
 
                                     st.stop()
 
-
                                 st.session_state.step = (
                                     "report"
                                 )
 
-
                                 st.rerun()
-
 
                             else:
 
@@ -750,20 +812,17 @@ elif st.session_state.step == "interview":
                                     response.text
                                 )
 
-
                         except requests.exceptions.RequestException as e:
 
                             st.error(
                                 f"Connection Error: {e}"
                             )
 
-
                         except Exception as e:
 
                             st.error(
                                 f"Unexpected Error: {e}"
                             )
-
 
 # ==========================
 # STEP 3 : REPORT

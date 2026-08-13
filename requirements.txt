@@ -12,3 +12,5 @@ PyMuPDF
 pypdf
 reportlab
 streamlit-mic-recorder
+gTTS
+SpeechRecognition
