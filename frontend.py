@@ -141,7 +141,7 @@ if st.session_state.token is None:
 
                         st.stop()
 
-                    st.session_state.token = (
+                                       st.session_state.token = (
                         data["access_token"]
                     )
 
@@ -150,7 +150,7 @@ if st.session_state.token is None:
                         f"Bearer {st.session_state.token}"
                     }
 
-                                       try:
+                    try:
 
                         user_response = requests.get(
                             f"{BACKEND_URL}/users/me",
@@ -172,16 +172,14 @@ if st.session_state.token is None:
 
                         st.session_state.user = None
 
-
                     st.session_state.step = "upload"
-
 
                     st.success(
                         "Login Successful 🎉"
                     )
 
                     st.rerun()
-
+                    
             except requests.exceptions.RequestException as e:
 
                 st.error(
