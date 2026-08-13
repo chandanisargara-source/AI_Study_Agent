@@ -5,7 +5,7 @@ from streamlit_mic_recorder import mic_recorder
 
 
 # ==========================
-# PAGE CONFIG
+# PAGE CONFIGURATION
 # ==========================
 
 st.set_page_config(
@@ -14,6 +14,10 @@ st.set_page_config(
     layout="wide"
 )
 
+
+# ==========================
+# BACKEND URL
+# ==========================
 
 BACKEND_URL = "https://ai-study-agent-xqis.onrender.com"
 
@@ -49,7 +53,8 @@ if "job_role" not in st.session_state:
 if "report" not in st.session_state:
     st.session_state.report = None
 
- # ==========================
+
+# ==========================
 # LOGIN SYSTEM
 # ==========================
 
@@ -75,6 +80,7 @@ if st.session_state.token is None:
         key="login_password"
     )
 
+
     # ==========================
     # LOGIN
     # ==========================
@@ -86,111 +92,137 @@ if st.session_state.token is None:
             key="login_button"
         ):
 
-            try:
+            if not login_name or not password:
 
-                response = requests.post(
-                    f"{BACKEND_URL}/auth/login",
-                    json={
-                        "name": login_name,
-                        "password": password
-                    },
-                    timeout=30
+                st.warning(
+                    "Please enter name and password."
                 )
 
-                if response.status_code != 200:
+            else:
 
-                    try:
+                try:
 
-                        error_data = response.json()
-
-                        st.error(
-                            f"Login failed: {error_data}"
-                        )
-
-                    except Exception:
-
-                        st.error(
-                            f"Login failed "
-                            f"({response.status_code}): "
-                            f"{response.text}"
-                        )
-
-                else:
-
-                    try:
-
-                        data = response.json()
-
-                    except Exception:
-
-                        st.error(
-                            "Backend did not return valid JSON."
-                        )
-
-                        st.code(
-                            response.text
-                        )
-
-                        st.stop()
-
-                    if "access_token" not in data:
-
-                        st.error(
-                            f"Login response: {data}"
-                        )
-
-                        st.stop()
-
-                                       st.session_state.token = (
-                        data["access_token"]
+                    response = requests.post(
+                        f"{BACKEND_URL}/auth/login",
+                        json={
+                            "name": login_name,
+                            "password": password
+                        },
+                        timeout=120
                     )
 
-                    headers = {
-                        "Authorization":
-                        f"Bearer {st.session_state.token}"
-                    }
 
-                    try:
+                    if response.status_code == 200:
 
-                        user_response = requests.get(
-                            f"{BACKEND_URL}/users/me",
-                            headers=headers,
-                            timeout=30
-                        )
+                        try:
 
-                        if user_response.status_code == 200:
+                            data = response.json()
 
-                            st.session_state.user = (
-                                user_response.json()
+                        except Exception:
+
+                            st.error(
+                                "Backend did not return valid JSON."
                             )
 
-                        else:
+                            st.code(
+                                response.text
+                            )
+
+                            st.stop()
+
+
+                        if "access_token" not in data:
+
+                            st.error(
+                                f"Login response: {data}"
+                            )
+
+                            st.stop()
+
+
+                        st.session_state.token = (
+                            data["access_token"]
+                        )
+
+
+                        # ==========================
+                        # GET USER INFORMATION
+                        # ==========================
+
+                        headers = {
+                            "Authorization":
+                            f"Bearer {st.session_state.token}"
+                        }
+
+
+                        try:
+
+                            user_response = requests.get(
+                                f"{BACKEND_URL}/users/me",
+                                headers=headers,
+                                timeout=120
+                            )
+
+
+                            if user_response.status_code == 200:
+
+                                try:
+
+                                    st.session_state.user = (
+                                        user_response.json()
+                                    )
+
+                                except Exception:
+
+                                    st.session_state.user = None
+
+                            else:
+
+                                st.session_state.user = None
+
+
+                        except Exception:
 
                             st.session_state.user = None
 
-                    except Exception:
 
-                        st.session_state.user = None
+                        st.session_state.step = "upload"
 
-                    st.session_state.step = "upload"
+                        st.rerun()
 
-                    st.success(
-                        "Login Successful 🎉"
+
+                    else:
+
+                        try:
+
+                            error_data = response.json()
+
+                            st.error(
+                                f"Login failed: {error_data}"
+                            )
+
+                        except Exception:
+
+                            st.error(
+                                f"Login failed "
+                                f"({response.status_code}): "
+                                f"{response.text}"
+                            )
+
+
+                except requests.exceptions.RequestException as e:
+
+                    st.error(
+                        f"Connection error: {e}"
                     )
 
-                    st.rerun()
-                    
-            except requests.exceptions.RequestException as e:
 
-                st.error(
-                    f"Connection error: {e}"
-                )
+                except Exception as e:
 
-            except Exception as e:
+                    st.error(
+                        f"Unexpected error: {e}"
+                    )
 
-                st.error(
-                    f"Unexpected error: {e}"
-                )
 
     # ==========================
     # SIGN UP
@@ -203,56 +235,69 @@ if st.session_state.token is None:
             key="signup_button"
         ):
 
-            try:
+            if not login_name or not password:
 
-                response = requests.post(
-                    f"{BACKEND_URL}/auth/signup",
-                    json={
-                        "name": login_name,
-                        "password": password
-                    },
-                    timeout=30
+                st.warning(
+                    "Please enter name and password."
                 )
 
-                if response.status_code in [200, 201]:
+            else:
 
-                    st.success(
-                        "Account created successfully! 🎉"
+                try:
+
+                    response = requests.post(
+                        f"{BACKEND_URL}/auth/signup",
+                        json={
+                            "name": login_name,
+                            "password": password
+                        },
+                        timeout=120
                     )
 
-                    st.info(
-                        "Now select Login and sign in."
+
+                    if response.status_code in [200, 201]:
+
+                        st.success(
+                            "Account created successfully! 🎉"
+                        )
+
+                        st.info(
+                            "Now select Login and sign in."
+                        )
+
+
+                    else:
+
+                        try:
+
+                            error_data = response.json()
+
+                            st.error(
+                                f"Sign Up failed: {error_data}"
+                            )
+
+                        except Exception:
+
+                            st.error(
+                                f"Sign Up failed "
+                                f"({response.status_code}): "
+                                f"{response.text}"
+                            )
+
+
+                except requests.exceptions.RequestException as e:
+
+                    st.error(
+                        f"Connection error: {e}"
                     )
 
-                else:
 
-                    try:
+                except Exception as e:
 
-                        error_data = response.json()
+                    st.error(
+                        f"Unexpected error: {e}"
+                    )
 
-                        st.error(
-                            f"Sign Up failed: {error_data}"
-                        )
-
-                    except Exception:
-
-                        st.error(
-                            f"Sign Up failed "
-                            f"({response.status_code}): "
-                            f"{response.text}"
-                        )
-
-            except requests.exceptions.RequestException as e:
-
-                st.error(
-                    f"Connection error: {e}"
-                )
-
-            except Exception as e:
-
-                st.error(
-                    f"Unexpected error: {e}"
-                )
 
     st.stop()
 
@@ -260,8 +305,6 @@ if st.session_state.token is None:
 # ==========================
 # MAIN DASHBOARD
 # ==========================
-
-st.success("✅ MAIN DASHBOARD LOADED")
 
 st.sidebar.title(
     "📋 Dashboard"
@@ -291,6 +334,7 @@ st.sidebar.write(
     "✅ Performance Report"
 )
 
+
 st.title(
     "🤖 AI Job Interview Agent"
 )
@@ -300,6 +344,7 @@ st.subheader(
 )
 
 st.divider()
+
 
 # ==========================
 # STEP 1 : RESUME UPLOAD
@@ -312,13 +357,13 @@ if st.session_state.step == "upload":
     )
 
 
-    name = st.text_input(
+    candidate_name_input = st.text_input(
         "Candidate Name",
         key="candidate_name_input"
     )
 
 
-    role = st.text_input(
+    role_input = st.text_input(
         "Job Role",
         key="job_role_input"
     )
@@ -335,7 +380,7 @@ if st.session_state.step == "upload":
             "Wipro",
             "Other"
         ],
-        key="company_input"
+        key="target_company"
     )
 
 
@@ -347,7 +392,7 @@ if st.session_state.step == "upload":
             "Behavioral",
             "Mixed"
         ],
-        key="interview_type_input"
+        key="interview_type"
     )
 
 
@@ -359,7 +404,7 @@ if st.session_state.step == "upload":
             "2-5 Years",
             "5+ Years"
         ],
-        key="experience_input"
+        key="experience_level"
     )
 
 
@@ -394,21 +439,26 @@ if st.session_state.step == "upload":
 
         col3.metric(
             "Experience",
-            "Fresher"
+            experience
         )
 
 
         st.progress(85)
 
 
+        # ==========================
+        # START INTERVIEW
+        # ==========================
+
         if st.button(
-            "🚀 Start Interview"
+            "🚀 Start Interview",
+            key="start_interview_button"
         ):
 
-            if not name or not role:
+            if not candidate_name_input or not role_input:
 
                 st.error(
-                    "Please enter name and role"
+                    "Please enter name and role."
                 )
 
 
@@ -428,8 +478,8 @@ if st.session_state.step == "upload":
 
 
                     params = {
-                        "name": name,
-                        "role": role
+                        "name": candidate_name_input,
+                        "role": role_input
                     }
 
 
@@ -439,13 +489,27 @@ if st.session_state.step == "upload":
                             f"{BACKEND_URL}/upload-resume",
                             files=files,
                             params=params,
-                            timeout=60
+                            timeout=120
                         )
 
 
                         if response.status_code == 200:
 
-                            data = response.json()
+                            try:
+
+                                data = response.json()
+
+                            except Exception:
+
+                                st.error(
+                                    "Backend returned invalid JSON."
+                                )
+
+                                st.code(
+                                    response.text
+                                )
+
+                                st.stop()
 
 
                             questions = data.get(
@@ -467,21 +531,27 @@ if st.session_state.step == "upload":
                                     questions
                                 )
 
+
                                 st.session_state.candidate_name = (
-                                    name
+                                    candidate_name_input
                                 )
 
+
                                 st.session_state.job_role = (
-                                    role
+                                    role_input
                                 )
+
 
                                 st.session_state.answers = []
 
+
                                 st.session_state.current_q_index = 0
+
 
                                 st.session_state.step = (
                                     "interview"
                                 )
+
 
                                 st.rerun()
 
@@ -518,23 +588,20 @@ if st.session_state.step == "upload":
 
 elif st.session_state.step == "interview":
 
-    questions = (
-        st.session_state.questions
-    )
+    questions = st.session_state.questions
 
-    index = (
-        st.session_state.current_q_index
-    )
+    index = st.session_state.current_q_index
 
 
     if not questions:
 
         st.error(
-            "No interview questions found."
+            "No interview questions available."
         )
 
         if st.button(
-            "🔄 Back to Upload"
+            "🔄 Back to Upload",
+            key="back_to_upload"
         ):
 
             st.session_state.step = "upload"
@@ -581,21 +648,16 @@ elif st.session_state.step == "interview":
             )
 
 
-        if index < len(questions) - 1:
-
-            button_text = (
-                "Next Question ➡️"
-            )
-
-        else:
-
-            button_text = (
-                "Submit Interview 🎓"
-            )
+        button_text = (
+            "Next Question ➡️"
+            if index < len(questions) - 1
+            else "Submit Interview 🎓"
+        )
 
 
         if st.button(
-            button_text
+            button_text,
+            key=f"next_question_{index}"
         ):
 
             if not answer.strip():
@@ -609,11 +671,8 @@ elif st.session_state.step == "interview":
 
                 st.session_state.answers.append(
                     {
-                        "question":
-                        questions[index],
-
-                        "answer":
-                        answer
+                        "question": questions[index],
+                        "answer": answer
                     }
                 )
 
@@ -632,7 +691,6 @@ elif st.session_state.step == "interview":
                     ):
 
                         payload = {
-
                             "name":
                             st.session_state.candidate_name,
 
@@ -649,19 +707,35 @@ elif st.session_state.step == "interview":
                             response = requests.post(
                                 f"{BACKEND_URL}/submit-interview",
                                 json=payload,
-                                timeout=60
+                                timeout=120
                             )
 
 
                             if response.status_code == 200:
 
-                                st.session_state.report = (
-                                    response.json()
-                                )
+                                try:
+
+                                    st.session_state.report = (
+                                        response.json()
+                                    )
+
+                                except Exception:
+
+                                    st.error(
+                                        "Backend returned invalid report."
+                                    )
+
+                                    st.code(
+                                        response.text
+                                    )
+
+                                    st.stop()
+
 
                                 st.session_state.step = (
                                     "report"
                                 )
+
 
                                 st.rerun()
 
@@ -705,10 +779,21 @@ elif st.session_state.step == "report":
     )
 
 
-    report = (
-        st.session_state.report
-    )
+    report = st.session_state.report
 
+
+    if report is None:
+
+        st.error(
+            "Report data is not available."
+        )
+
+        st.stop()
+
+
+    # ==========================
+    # CANDIDATE INFORMATION
+    # ==========================
 
     st.info(
         f"""
@@ -719,6 +804,10 @@ elif st.session_state.step == "report":
     )
 
 
+    # ==========================
+    # PERFORMANCE REPORT
+    # ==========================
+
     st.subheader(
         "📊 Performance Report"
     )
@@ -727,7 +816,10 @@ elif st.session_state.step == "report":
     percentage = float(
         str(
             report["percentage"]
-        ).replace("%", "")
+        ).replace(
+            "%",
+            ""
+        )
     )
 
 
@@ -760,9 +852,13 @@ elif st.session_state.step == "report":
     )
 
 
-    recommendation = (
-        report["recommendation"]
-    )
+    # ==========================
+    # RECOMMENDATION
+    # ==========================
+
+    recommendation = report[
+        "recommendation"
+    ]
 
 
     if recommendation == (
@@ -799,8 +895,14 @@ elif st.session_state.step == "report":
         )
 
 
-    st.markdown("---")
+    st.markdown(
+        "---"
+    )
 
+
+    # ==========================
+    # AI FEEDBACK
+    # ==========================
 
     st.subheader(
         "💡 AI Feedback"
@@ -846,8 +948,14 @@ elif st.session_state.step == "report":
     # PDF REPORT
     # ==========================
 
+    st.markdown(
+        "---"
+    )
+
+
     if st.button(
-        "📄 Generate PDF Report"
+        "📄 Generate PDF Report",
+        key="generate_pdf_button"
     ):
 
         try:
@@ -855,33 +963,33 @@ elif st.session_state.step == "report":
             pdf_file = generate_pdf_report(
                 filename="Interview_Report.pdf",
 
-                candidate_name=(
-                    report["candidate_name"]
-                ),
+                candidate_name=report[
+                    "candidate_name"
+                ],
 
-                job_role=(
-                    report["job_role"]
-                ),
+                job_role=report[
+                    "job_role"
+                ],
 
-                total_score=(
-                    report["total_score"]
-                ),
+                total_score=report[
+                    "total_score"
+                ],
 
-                max_score=(
-                    report["max_score"]
-                ),
+                max_score=report[
+                    "max_score"
+                ],
 
-                percentage=(
-                    report["percentage"]
-                ),
+                percentage=report[
+                    "percentage"
+                ],
 
-                recommendation=(
-                    report["recommendation"]
-                ),
+                recommendation=report[
+                    "recommendation"
+                ],
 
-                feedback_report=(
-                    report["detailed_feedback"]
-                )
+                feedback_report=report[
+                    "detailed_feedback"
+                ]
             )
 
 
@@ -899,7 +1007,8 @@ elif st.session_state.step == "report":
                     label="⬇️ Download PDF",
                     data=file,
                     file_name="Interview_Report.pdf",
-                    mime="application/pdf"
+                    mime="application/pdf",
+                    key="download_pdf_button"
                 )
 
 
@@ -911,11 +1020,12 @@ elif st.session_state.step == "report":
 
 
     # ==========================
-    # RESTART
+    # RESTART INTERVIEW
     # ==========================
 
     if st.button(
-        "🔄 Restart Interview"
+        "🔄 Restart Interview",
+        key="restart_interview_button"
     ):
 
         st.session_state.step = "upload"
