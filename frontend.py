@@ -3,6 +3,7 @@ import requests
 from gtts import gTTS
 import speech_recognition as sr
 import io
+from pydub import AudioSegment
 from report import generate_pdf_report
 from streamlit_mic_recorder import mic_recorder
 
@@ -550,27 +551,21 @@ if st.session_state.step == "upload":
                                     questions
                                 )
 
-
                                 st.session_state.candidate_name = (
                                     candidate_name_input
                                 )
-
 
                                 st.session_state.job_role = (
                                     role_input
                                 )
 
-
                                 st.session_state.answers = []
 
-
                                 st.session_state.current_q_index = 0
-
 
                                 st.session_state.step = (
                                     "interview"
                                 )
-
 
                                 st.rerun()
 
@@ -650,7 +645,7 @@ elif st.session_state.step == "interview":
 
 
         # =================================================
-        # LISTEN TO QUESTION
+        # LISTEN QUESTION
         # =================================================
 
         if st.button(
@@ -750,10 +745,34 @@ elif st.session_state.step == "interview":
                 recognizer = sr.Recognizer()
 
 
+                # Get recorded audio
+
+                audio_data = audio["bytes"]
+
+
+                # Convert audio to WAV
+
+                audio_segment = AudioSegment.from_file(
+                    io.BytesIO(audio_data)
+                )
+
+
+                wav_buffer = io.BytesIO()
+
+
+                audio_segment.export(
+                    wav_buffer,
+                    format="wav"
+                )
+
+
+                wav_buffer.seek(0)
+
+
+                # Read WAV audio
+
                 audio_file = sr.AudioFile(
-                    io.BytesIO(
-                        audio["bytes"]
-                    )
+                    wav_buffer
                 )
 
 
@@ -763,6 +782,8 @@ elif st.session_state.step == "interview":
                         source
                     )
 
+
+                # Voice to text
 
                 with st.spinner(
                     "📝 Converting voice to text..."
@@ -774,7 +795,7 @@ elif st.session_state.step == "interview":
                     )
 
 
-                # Put voice answer into text box
+                # Save voice text in answer box
 
                 st.session_state[
                     f"answer_{index}"
@@ -914,7 +935,6 @@ elif st.session_state.step == "interview":
                                 st.session_state.step = (
                                     "report"
                                 )
-
 
                                 st.rerun()
 
