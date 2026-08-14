@@ -52,6 +52,17 @@ SPEECH_CODES = {
 }
 
 
+LANGUAGE_LIST = [
+    "English",
+    "Gujarati",
+    "Hindi",
+    "Marathi",
+    "Bengali",
+    "Tamil",
+    "Telugu"
+]
+
+
 # =========================================================
 # SESSION STATE
 # =========================================================
@@ -83,17 +94,20 @@ if "job_role" not in st.session_state:
 if "report" not in st.session_state:
     st.session_state.report = None
 
-# IMPORTANT:
-# Separate variable for selected interview language.
-# We NEVER modify the selectbox widget state later.
 if "interview_language" not in st.session_state:
     st.session_state.interview_language = "English"
+
+if "answer_values" not in st.session_state:
+    st.session_state.answer_values = {}
 
 if "voice_text" not in st.session_state:
     st.session_state.voice_text = {}
 
-if "answer_values" not in st.session_state:
-    st.session_state.answer_values = {}
+if "voice_result" not in st.session_state:
+    st.session_state.voice_result = {}
+
+if "recording_counter" not in st.session_state:
+    st.session_state.recording_counter = 0
 
 
 # =========================================================
@@ -140,9 +154,13 @@ def convert_voice_to_text(audio_bytes, language):
 
         recognizer = sr.Recognizer()
 
-        with sr.AudioFile(temp_file.name) as source:
+        with sr.AudioFile(
+            temp_file.name
+        ) as source:
 
-            audio_data = recognizer.record(source)
+            audio_data = recognizer.record(
+                source
+            )
 
         speech_language = SPEECH_CODES.get(
             language,
@@ -158,13 +176,17 @@ def convert_voice_to_text(audio_bytes, language):
 
     finally:
 
-        if os.path.exists(temp_file.name):
+        if os.path.exists(
+            temp_file.name
+        ):
 
-            os.remove(temp_file.name)
+            os.remove(
+                temp_file.name
+            )
 
 
 # =========================================================
-# LOGIN
+# LOGIN / SIGNUP
 # =========================================================
 
 if st.session_state.token is None:
@@ -348,22 +370,41 @@ if st.session_state.token is None:
 # SIDEBAR
 # =========================================================
 
-st.sidebar.title("📋 Dashboard")
+st.sidebar.title(
+    "📋 Dashboard"
+)
 
 st.sidebar.success(
     "Project Status: Running"
 )
 
-st.sidebar.write("✅ Resume Upload")
-st.sidebar.write("✅ Multilingual Interview")
-st.sidebar.write("✅ Voice Answer")
-st.sidebar.write("✅ Speech to Text")
-st.sidebar.write("✅ AI Evaluation")
-st.sidebar.write("✅ PDF Report")
+st.sidebar.write(
+    "✅ Resume Upload"
+)
+
+st.sidebar.write(
+    "✅ Multilingual Interview"
+)
+
+st.sidebar.write(
+    "✅ Voice Answer"
+)
+
+st.sidebar.write(
+    "✅ Speech to Text"
+)
+
+st.sidebar.write(
+    "✅ AI Evaluation"
+)
+
+st.sidebar.write(
+    "✅ PDF Report"
+)
 
 
 # =========================================================
-# TITLE
+# MAIN TITLE
 # =========================================================
 
 st.title(
@@ -376,7 +417,7 @@ st.caption(
 
 
 # =========================================================
-# STEP 1 : UPLOAD
+# STEP 1 : RESUME
 # =========================================================
 
 if st.session_state.step == "upload":
@@ -446,38 +487,32 @@ if st.session_state.step == "upload":
 
 
     # =====================================================
-    # LANGUAGE SELECT
+    # LANGUAGE
     # =====================================================
+
+    current_language = st.session_state.interview_language
+
+    language_index = (
+        LANGUAGE_LIST.index(current_language)
+        if current_language in LANGUAGE_LIST
+        else 0
+    )
+
 
     selected_language = st.selectbox(
         "🌐 Interview Language",
-        [
-            "English",
-            "Gujarati",
-            "Hindi",
-            "Marathi",
-            "Bengali",
-            "Tamil",
-            "Telugu"
-        ],
-        index=[
-            "English",
-            "Gujarati",
-            "Hindi",
-            "Marathi",
-            "Bengali",
-            "Tamil",
-            "Telugu"
-        ].index(
-            st.session_state.interview_language
-        ),
+        LANGUAGE_LIST,
+        index=language_index,
         key="language_selector"
     )
 
 
-    # IMPORTANT:
-    # Save selected language into a DIFFERENT state variable.
-    st.session_state.interview_language = selected_language
+    # Save selected language in separate variable
+    if selected_language != st.session_state.interview_language:
+
+        st.session_state.interview_language = (
+            selected_language
+        )
 
 
     uploaded_file = st.file_uploader(
@@ -529,10 +564,16 @@ if st.session_state.step == "upload":
                     )
                 }
 
+
                 params = {
-                    "name": candidate_name_input,
-                    "role": role_input,
-                    "language": selected_language
+                    "name":
+                    candidate_name_input,
+
+                    "role":
+                    role_input,
+
+                    "language":
+                    selected_language
                 }
 
 
@@ -559,7 +600,7 @@ if st.session_state.step == "upload":
                         if not questions:
 
                             st.error(
-                                "Backend returned no questions."
+                                "No questions received."
                             )
 
                         else:
@@ -580,14 +621,17 @@ if st.session_state.step == "upload":
                                 role_input
                             )
 
-                            st.session_state.voice_text = {}
-
-                            st.session_state.answer_values = {}
-
-                            # Language already stored separately.
                             st.session_state.interview_language = (
                                 selected_language
                             )
+
+                            st.session_state.answer_values = {}
+
+                            st.session_state.voice_text = {}
+
+                            st.session_state.voice_result = {}
+
+                            st.session_state.recording_counter = 0
 
                             st.session_state.step = "interview"
 
@@ -627,7 +671,7 @@ elif st.session_state.step == "interview":
     if not questions:
 
         st.error(
-            "No interview questions available."
+            "No questions available."
         )
 
         st.stop()
@@ -635,9 +679,6 @@ elif st.session_state.step == "interview":
 
     current_question = questions[index]
 
-
-    # IMPORTANT:
-    # Use our own interview_language state.
     language = st.session_state.interview_language
 
 
@@ -729,23 +770,34 @@ elif st.session_state.step == "interview":
     )
 
 
+    # IMPORTANT:
+    # The answer box gets its initial value from
+    # answer_values. We never modify its widget state.
+
     answer = st.text_area(
-        "Type your answer or use microphone",
+        "Type your answer here...",
         value=answer_value,
         height=130,
         key=f"answer_box_{index}"
     )
 
 
+    # Save typed text
     st.session_state.answer_values[index] = answer
 
 
     # =====================================================
-    # MICROPHONE
+    # VOICE RECORDING
     # =====================================================
 
     st.caption(
-        "🎙️ Or speak your answer"
+        "🎙️ Or answer by voice"
+    )
+
+
+    recorder_key = (
+        f"voice_recorder_{index}_"
+        f"{st.session_state.recording_counter}"
     )
 
 
@@ -754,19 +806,20 @@ elif st.session_state.step == "interview":
         stop_prompt="⏹️ Stop Recording",
         just_once=True,
         format="wav",
-        key=f"voice_recorder_{index}"
+        key=recorder_key
     )
 
 
     # =====================================================
-    # VOICE TO TEXT
+    # VOICE → TEXT
     # =====================================================
 
     if audio:
 
         st.success(
-            "🎤 Voice recorded successfully!"
+            "🎤 Recording completed!"
         )
+
 
         st.audio(
             audio["bytes"],
@@ -775,7 +828,7 @@ elif st.session_state.step == "interview":
 
 
         with st.spinner(
-            "🎧 Converting voice to text..."
+            f"🎧 Converting voice to {language} text..."
         ):
 
             try:
@@ -788,18 +841,53 @@ elif st.session_state.step == "interview":
 
                 if converted_text:
 
-                    # Save text
+                    # ------------------------------------------------
+                    # SAVE VOICE TEXT
+                    # ------------------------------------------------
+
                     st.session_state.voice_text[index] = (
                         converted_text
                     )
+
+
+                    st.session_state.voice_result[index] = True
+
+
+                    # ------------------------------------------------
+                    # SAVE AS ANSWER
+                    # ------------------------------------------------
 
                     st.session_state.answer_values[index] = (
                         converted_text
                     )
 
+
                     st.success(
-                        "✅ Voice converted successfully!"
+                        "✅ Voice converted to text!"
                     )
+
+
+                    st.markdown(
+                        "### 📝 Converted Answer"
+                    )
+
+                    st.info(
+                        converted_text
+                    )
+
+
+                    st.caption(
+                        "The converted text is now saved as your answer. "
+                        "You can edit it in the answer box above."
+                    )
+
+
+                    # ------------------------------------------------
+                    # New recorder key for next recording
+                    # ------------------------------------------------
+
+                    st.session_state.recording_counter += 1
+
 
                     st.rerun()
 
@@ -827,45 +915,50 @@ elif st.session_state.step == "interview":
 
 
     # =====================================================
-    # CONVERTED TEXT PREVIEW
+    # VOICE TEXT STATUS
     # =====================================================
 
     if index in st.session_state.voice_text:
 
         st.success(
-            "📝 Voice converted to text successfully."
-        )
-
-        st.write(
-            st.session_state.voice_text[index]
+            "🎤 Voice answer ready"
         )
 
 
     # =====================================================
-    # NEXT BUTTON
+    # NEXT / SUBMIT
     # =====================================================
 
     if index < len(questions) - 1:
 
-        button_text = "➡️ Next Question"
+        next_button_text = (
+            "➡️ Save Answer & Next Question"
+        )
 
     else:
 
-        button_text = "🎓 Submit Interview"
+        next_button_text = (
+            "🎓 Submit Interview"
+        )
 
 
     if st.button(
-        button_text,
+        next_button_text,
         use_container_width=True
     ):
 
+
+        # Get final answer from current answer
         final_answer = st.session_state.answer_values.get(
             index,
             ""
         )
 
 
-        if not final_answer.strip():
+        final_answer = final_answer.strip()
+
+
+        if not final_answer:
 
             st.warning(
                 "⚠️ Please type an answer or record your voice."
@@ -874,27 +967,36 @@ elif st.session_state.step == "interview":
             st.stop()
 
 
+        # =================================================
+        # SAVE ANSWER
+        # =================================================
+
         st.session_state.answers.append(
             {
-                "question": current_question,
-                "answer": final_answer
+                "question":
+                current_question,
+
+                "answer":
+                final_answer
             }
         )
 
 
         # =================================================
-        # NEXT
+        # NEXT QUESTION
         # =================================================
 
         if index < len(questions) - 1:
 
-            st.session_state.current_q_index += 1
+            st.session_state.current_q_index = (
+                index + 1
+            )
 
             st.rerun()
 
 
         # =================================================
-        # SUBMIT
+        # FINAL SUBMIT
         # =================================================
 
         else:
@@ -961,6 +1063,7 @@ elif st.session_state.step == "report":
 
     st.balloons()
 
+
     st.success(
         "🎉 Interview Completed Successfully"
     )
@@ -984,12 +1087,14 @@ elif st.session_state.step == "report":
 
     col1, col2 = st.columns(2)
 
+
     with col1:
 
         st.info(
             f"👤 Candidate\n\n"
             f"{report['candidate_name']}"
         )
+
 
     with col2:
 
@@ -1033,11 +1138,13 @@ elif st.session_state.step == "report":
         )
     )
 
+
     col2.metric(
         "Score",
         f"{report['total_score']} / "
         f"{report['max_score']}"
     )
+
 
     col3.metric(
         "Percentage",
@@ -1210,12 +1317,12 @@ elif st.session_state.step == "report":
 
         st.session_state.report = None
 
-        st.session_state.voice_text = {}
-
         st.session_state.answer_values = {}
 
-        # IMPORTANT:
-        # We do NOT touch language_selector.
-        # We keep interview_language safely.
+        st.session_state.voice_text = {}
+
+        st.session_state.voice_result = {}
+
+        st.session_state.recording_counter = 0
 
         st.rerun()
