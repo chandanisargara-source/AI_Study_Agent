@@ -21,7 +21,7 @@ st.set_page_config(
 
 
 # =========================================================
-# BACKEND
+# BACKEND URL
 # =========================================================
 
 BACKEND_URL = "https://ai-study-agent-xqis.onrender.com"
@@ -132,43 +132,42 @@ def convert_voice_to_text(audio_bytes, language):
 # SESSION STATE
 # =========================================================
 
-defaults = {
+if "token" not in st.session_state:
+    st.session_state.token = None
 
-    "token": None,
+if "user" not in st.session_state:
+    st.session_state.user = None
 
-    "user": None,
+if "step" not in st.session_state:
+    st.session_state.step = "upload"
 
-    "step": "upload",
+if "questions" not in st.session_state:
+    st.session_state.questions = []
 
-    "questions": [],
+if "answers" not in st.session_state:
+    st.session_state.answers = []
 
-    "answers": [],
+if "current_q_index" not in st.session_state:
+    st.session_state.current_q_index = 0
 
-    "current_q_index": 0,
+if "candidate_name" not in st.session_state:
+    st.session_state.candidate_name = ""
 
-    "candidate_name": "",
+if "job_role" not in st.session_state:
+    st.session_state.job_role = ""
 
-    "job_role": "",
+if "report" not in st.session_state:
+    st.session_state.report = None
 
-    "report": None,
+if "voice_text" not in st.session_state:
+    st.session_state.voice_text = {}
 
-    "selected_language": "English",
-
-    "voice_text": {},
-
-    "answer_values": {}
-}
-
-
-for key, value in defaults.items():
-
-    if key not in st.session_state:
-
-        st.session_state[key] = value
+if "answer_values" not in st.session_state:
+    st.session_state.answer_values = {}
 
 
 # =========================================================
-# LOGIN / SIGNUP
+# LOGIN SYSTEM
 # =========================================================
 
 if st.session_state.token is None:
@@ -213,17 +212,13 @@ if st.session_state.token is None:
                 try:
 
                     response = requests.post(
-
                         f"{BACKEND_URL}/auth/login",
-
                         json={
                             "name": login_name,
                             "password": password
                         },
-
                         timeout=120
                     )
-
 
                     if response.status_code == 200:
 
@@ -237,29 +232,22 @@ if st.session_state.token is None:
 
                             st.stop()
 
-
                         st.session_state.token = (
                             data["access_token"]
                         )
-
 
                         headers = {
                             "Authorization":
                             f"Bearer {st.session_state.token}"
                         }
 
-
                         try:
 
                             user_response = requests.get(
-
                                 f"{BACKEND_URL}/users/me",
-
                                 headers=headers,
-
                                 timeout=120
                             )
-
 
                             if user_response.status_code == 200:
 
@@ -271,11 +259,9 @@ if st.session_state.token is None:
 
                             pass
 
-
                         st.session_state.step = "upload"
 
                         st.rerun()
-
 
                     else:
 
@@ -290,7 +276,6 @@ if st.session_state.token is None:
                             st.error(
                                 response.text
                             )
-
 
                 except Exception as e:
 
@@ -321,17 +306,13 @@ if st.session_state.token is None:
                 try:
 
                     response = requests.post(
-
                         f"{BACKEND_URL}/auth/signup",
-
                         json={
                             "name": login_name,
                             "password": password
                         },
-
                         timeout=120
                     )
-
 
                     if response.status_code in [200, 201]:
 
@@ -357,13 +338,11 @@ if st.session_state.token is None:
                                 response.text
                             )
 
-
                 except Exception as e:
 
                     st.error(
                         f"Connection error: {e}"
                     )
-
 
     st.stop()
 
@@ -428,9 +407,7 @@ if st.session_state.step == "upload":
         "📝 Candidate Details"
     )
 
-
     col1, col2 = st.columns(2)
-
 
     with col1:
 
@@ -438,7 +415,6 @@ if st.session_state.step == "upload":
             "Candidate Name",
             key="candidate_name_input"
         )
-
 
     with col2:
 
@@ -449,7 +425,6 @@ if st.session_state.step == "upload":
 
 
     col1, col2, col3 = st.columns(3)
-
 
     with col1:
 
@@ -467,7 +442,6 @@ if st.session_state.step == "upload":
             ]
         )
 
-
     with col2:
 
         interview_type = st.selectbox(
@@ -479,7 +453,6 @@ if st.session_state.step == "upload":
                 "Mixed"
             ]
         )
-
 
     with col3:
 
@@ -499,9 +472,7 @@ if st.session_state.step == "upload":
     # =====================================================
 
     selected_language = st.selectbox(
-
         "🌐 Interview Language",
-
         [
             "English",
             "Gujarati",
@@ -511,14 +482,14 @@ if st.session_state.step == "upload":
             "Tamil",
             "Telugu"
         ],
-
         key="selected_language"
     )
 
 
     uploaded_file = st.file_uploader(
         "📄 Upload Resume",
-        type=["pdf"]
+        type=["pdf"],
+        key="resume_upload"
     )
 
 
@@ -527,7 +498,6 @@ if st.session_state.step == "upload":
         st.success(
             "✅ Resume Uploaded Successfully"
         )
-
 
         if st.button(
             "🚀 Start Interview",
@@ -541,7 +511,6 @@ if st.session_state.step == "upload":
                 )
 
                 st.stop()
-
 
             if not role_input:
 
@@ -557,7 +526,6 @@ if st.session_state.step == "upload":
             ):
 
                 files = {
-
                     "file": (
                         uploaded_file.name,
                         uploaded_file.getvalue(),
@@ -565,30 +533,19 @@ if st.session_state.step == "upload":
                     )
                 }
 
-
                 params = {
-
-                    "name":
-                    candidate_name_input,
-
-                    "role":
-                    role_input,
-
-                    "language":
-                    selected_language
+                    "name": candidate_name_input,
+                    "role": role_input,
+                    "language": selected_language
                 }
 
 
                 try:
 
                     response = requests.post(
-
                         f"{BACKEND_URL}/upload-resume",
-
                         files=files,
-
                         params=params,
-
                         timeout=120
                     )
 
@@ -596,7 +553,6 @@ if st.session_state.step == "upload":
                     if response.status_code == 200:
 
                         data = response.json()
-
 
                         questions = data.get(
                             "questions",
@@ -626,10 +582,6 @@ if st.session_state.step == "upload":
 
                             st.session_state.job_role = (
                                 role_input
-                            )
-
-                            st.session_state.selected_language = (
-                                selected_language
                             )
 
                             st.session_state.voice_text = {}
@@ -691,7 +643,6 @@ elif st.session_state.step == "interview":
 
     col1, col2 = st.columns([4, 1])
 
-
     with col1:
 
         st.subheader(
@@ -701,7 +652,6 @@ elif st.session_state.step == "interview":
         st.caption(
             f"🌐 Language: {language}"
         )
-
 
     with col2:
 
@@ -736,7 +686,6 @@ elif st.session_state.step == "interview":
                 language
             )
 
-
             with open(
                 audio_file,
                 "rb"
@@ -747,11 +696,9 @@ elif st.session_state.step == "interview":
                     format="audio/mp3"
                 )
 
-
             os.remove(
                 audio_file
             )
-
 
         except Exception as e:
 
@@ -764,17 +711,7 @@ elif st.session_state.step == "interview":
 
 
     # =====================================================
-    # CURRENT ANSWER VALUE
-    # =====================================================
-
-    current_answer = st.session_state.answer_values.get(
-        index,
-        ""
-    )
-
-
-    # =====================================================
-    # ANSWER BOX
+    # ANSWER
     # =====================================================
 
     st.markdown(
@@ -782,20 +719,25 @@ elif st.session_state.step == "interview":
     )
 
 
+    # IMPORTANT:
+    # Do NOT use st.session_state.answer_0 directly.
+    # Value is controlled using answer_values.
+
+    answer_value = st.session_state.answer_values.get(
+        index,
+        ""
+    )
+
+
     answer = st.text_area(
-
         "Type your answer or use microphone",
-
-        value=current_answer,
-
+        value=answer_value,
         height=130,
-
         key=f"answer_box_{index}"
     )
 
 
-    # Save manually typed answer
-
+    # Store typed answer
     st.session_state.answer_values[index] = answer
 
 
@@ -809,15 +751,10 @@ elif st.session_state.step == "interview":
 
 
     audio = mic_recorder(
-
         start_prompt="🎙️ Start Recording",
-
         stop_prompt="⏹️ Stop Recording",
-
         just_once=True,
-
         format="wav",
-
         key=f"voice_recorder_{index}"
     )
 
@@ -832,7 +769,6 @@ elif st.session_state.step == "interview":
             "🎤 Voice recorded successfully!"
         )
 
-
         st.audio(
             audio["bytes"],
             format="audio/wav"
@@ -846,39 +782,40 @@ elif st.session_state.step == "interview":
             try:
 
                 converted_text = convert_voice_to_text(
-
                     audio["bytes"],
-
                     language
                 )
 
 
-                # ------------------------------------------------
-                # STORE CONVERTED TEXT
-                # ------------------------------------------------
+                if converted_text:
 
-                st.session_state.voice_text[index] = (
-                    converted_text
-                )
+                    # Save converted text
+                    st.session_state.voice_text[index] = (
+                        converted_text
+                    )
 
+                    st.session_state.answer_values[index] = (
+                        converted_text
+                    )
 
-                # ------------------------------------------------
-                # IMPORTANT:
-                # Store it BEFORE widget is created
-                # on next rerun.
-                # ------------------------------------------------
+                    st.success(
+                        "✅ Voice converted successfully!"
+                    )
 
-                st.session_state.answer_values[index] = (
-                    converted_text
-                )
+                    st.info(
+                        "📝 Converted answer:"
+                    )
 
+                    st.write(
+                        converted_text
+                    )
 
-                st.success(
-                    "✅ Speech converted successfully!"
-                )
+                    # IMPORTANT:
+                    # Do NOT modify answer_box widget state.
+                    # Instead we rerun and the value comes
+                    # from answer_values.
 
-
-                st.rerun()
+                    st.rerun()
 
 
             except sr.UnknownValueError:
@@ -904,13 +841,13 @@ elif st.session_state.step == "interview":
 
 
     # =====================================================
-    # SHOW CONVERTED TEXT
+    # SHOW VOICE TEXT STATUS
     # =====================================================
 
     if index in st.session_state.voice_text:
 
         st.success(
-            "📝 Voice converted to text and added to Answer box."
+            "📝 Voice text is ready in the answer."
         )
 
 
@@ -920,15 +857,11 @@ elif st.session_state.step == "interview":
 
     if index < len(questions) - 1:
 
-        button_text = (
-            "➡️ Next Question"
-        )
+        button_text = "➡️ Next Question"
 
     else:
 
-        button_text = (
-            "🎓 Submit Interview"
-        )
+        button_text = "🎓 Submit Interview"
 
 
     if st.button(
@@ -951,47 +884,32 @@ elif st.session_state.step == "interview":
             st.stop()
 
 
-        # -----------------------------------------------------
-        # SAVE ANSWER
-        # -----------------------------------------------------
-
         st.session_state.answers.append(
-
             {
-                "question":
-                current_question,
-
-                "answer":
-                final_answer
+                "question": current_question,
+                "answer": final_answer
             }
         )
 
 
-        # =====================================================
+        # =================================================
         # NEXT QUESTION
-        # =====================================================
+        # =================================================
 
         if index < len(questions) - 1:
 
-            next_index = index + 1
-
-
-            st.session_state.current_q_index = (
-                next_index
-            )
-
+            st.session_state.current_q_index += 1
 
             st.rerun()
 
 
-        # =====================================================
+        # =================================================
         # SUBMIT
-        # =====================================================
+        # =================================================
 
         else:
 
             payload = {
-
                 "name":
                 st.session_state.candidate_name,
 
@@ -1010,11 +928,8 @@ elif st.session_state.step == "interview":
                 try:
 
                     response = requests.post(
-
                         f"{BACKEND_URL}/submit-interview",
-
                         json=payload,
-
                         timeout=120
                     )
 
@@ -1056,7 +971,6 @@ elif st.session_state.step == "report":
 
     st.balloons()
 
-
     st.success(
         "🎉 Interview Completed Successfully"
     )
@@ -1075,11 +989,10 @@ elif st.session_state.step == "report":
 
 
     # =====================================================
-    # CANDIDATE
+    # CANDIDATE INFORMATION
     # =====================================================
 
     col1, col2 = st.columns(2)
-
 
     with col1:
 
@@ -1087,7 +1000,6 @@ elif st.session_state.step == "report":
             f"👤 Candidate\n\n"
             f"{report['candidate_name']}"
         )
-
 
     with col2:
 
@@ -1221,7 +1133,7 @@ elif st.session_state.step == "report":
 
 
     # =====================================================
-    # PDF
+    # PDF REPORT
     # =====================================================
 
     st.divider()
@@ -1314,6 +1226,9 @@ elif st.session_state.step == "report":
 
         st.session_state.answer_values = {}
 
-        st.session_state.selected_language = "English"
+        # IMPORTANT:
+        # Do NOT modify selected_language here.
+        # This fixes:
+        # "selected_language cannot be modified..."
 
         st.rerun()
