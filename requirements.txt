@@ -14,4 +14,3 @@ reportlab
 streamlit-mic-recorder
 gTTS
 SpeechRecognition
-pydub
