@@ -9,7 +9,7 @@ from streamlit_mic_recorder import mic_recorder
 
 
 # =========================================================
-# PAGE CONFIGURATION
+# PAGE CONFIG
 # =========================================================
 
 st.set_page_config(
@@ -20,7 +20,7 @@ st.set_page_config(
 
 
 # =========================================================
-# BACKEND URL
+# BACKEND
 # =========================================================
 
 BACKEND_URL = "https://ai-study-agent-xqis.onrender.com"
@@ -48,36 +48,27 @@ def speak_question(text):
 # SESSION STATE
 # =========================================================
 
-if "token" not in st.session_state:
-    st.session_state.token = None
+defaults = {
+    "token": None,
+    "user": None,
+    "step": "upload",
+    "questions": [],
+    "answers": [],
+    "current_q_index": 0,
+    "candidate_name": "",
+    "job_role": "",
+    "report": None
+}
 
-if "user" not in st.session_state:
-    st.session_state.user = None
+for key, value in defaults.items():
 
-if "step" not in st.session_state:
-    st.session_state.step = "upload"
+    if key not in st.session_state:
 
-if "questions" not in st.session_state:
-    st.session_state.questions = []
-
-if "answers" not in st.session_state:
-    st.session_state.answers = []
-
-if "current_q_index" not in st.session_state:
-    st.session_state.current_q_index = 0
-
-if "candidate_name" not in st.session_state:
-    st.session_state.candidate_name = ""
-
-if "job_role" not in st.session_state:
-    st.session_state.job_role = ""
-
-if "report" not in st.session_state:
-    st.session_state.report = None
+        st.session_state[key] = value
 
 
 # =========================================================
-# LOGIN / SIGNUP
+# LOGIN
 # =========================================================
 
 if st.session_state.token is None:
@@ -87,19 +78,16 @@ if st.session_state.token is None:
     mode = st.radio(
         "Choose an option",
         ["Login", "Sign Up"],
-        horizontal=True,
-        key="login_mode"
+        horizontal=True
     )
 
-    login_name = st.text_input(
-        "Name",
-        key="login_name"
+    name = st.text_input(
+        "Name"
     )
 
     password = st.text_input(
         "Password",
-        type="password",
-        key="login_password"
+        type="password"
     )
 
 
@@ -111,10 +99,10 @@ if st.session_state.token is None:
 
         if st.button(
             "Login",
-            key="login_button"
+            use_container_width=True
         ):
 
-            if not login_name or not password:
+            if not name or not password:
 
                 st.warning(
                     "Please enter name and password."
@@ -127,40 +115,16 @@ if st.session_state.token is None:
                     response = requests.post(
                         f"{BACKEND_URL}/auth/login",
                         json={
-                            "name": login_name,
+                            "name": name,
                             "password": password
                         },
-                        timeout=120
+                        timeout=60
                     )
 
 
                     if response.status_code == 200:
 
-                        try:
-
-                            data = response.json()
-
-                        except Exception:
-
-                            st.error(
-                                "Backend did not return valid JSON."
-                            )
-
-                            st.code(
-                                response.text
-                            )
-
-                            st.stop()
-
-
-                        if "access_token" not in data:
-
-                            st.error(
-                                f"Login response: {data}"
-                            )
-
-                            st.stop()
-
+                        data = response.json()
 
                         st.session_state.token = (
                             data["access_token"]
@@ -178,30 +142,18 @@ if st.session_state.token is None:
                             user_response = requests.get(
                                 f"{BACKEND_URL}/users/me",
                                 headers=headers,
-                                timeout=120
+                                timeout=30
                             )
-
 
                             if user_response.status_code == 200:
 
-                                try:
-
-                                    st.session_state.user = (
-                                        user_response.json()
-                                    )
-
-                                except Exception:
-
-                                    st.session_state.user = None
-
-                            else:
-
-                                st.session_state.user = None
-
+                                st.session_state.user = (
+                                    user_response.json()
+                                )
 
                         except Exception:
 
-                            st.session_state.user = None
+                            pass
 
 
                         st.session_state.step = "upload"
@@ -213,32 +165,22 @@ if st.session_state.token is None:
 
                         try:
 
-                            error_data = response.json()
-
                             st.error(
-                                f"Login failed: {error_data}"
+                                response.json()
                             )
 
                         except Exception:
 
                             st.error(
-                                f"Login failed "
-                                f"({response.status_code}): "
-                                f"{response.text}"
+                                f"Login failed: "
+                                f"{response.status_code}"
                             )
-
-
-                except requests.exceptions.RequestException as e:
-
-                    st.error(
-                        f"Connection error: {e}"
-                    )
 
 
                 except Exception as e:
 
                     st.error(
-                        f"Unexpected error: {e}"
+                        f"Connection error: {e}"
                     )
 
 
@@ -250,10 +192,10 @@ if st.session_state.token is None:
 
         if st.button(
             "Create Account",
-            key="signup_button"
+            use_container_width=True
         ):
 
-            if not login_name or not password:
+            if not name or not password:
 
                 st.warning(
                     "Please enter name and password."
@@ -266,10 +208,10 @@ if st.session_state.token is None:
                     response = requests.post(
                         f"{BACKEND_URL}/auth/signup",
                         json={
-                            "name": login_name,
+                            "name": name,
                             "password": password
                         },
-                        timeout=120
+                        timeout=60
                     )
 
 
@@ -280,40 +222,29 @@ if st.session_state.token is None:
                         )
 
                         st.info(
-                            "Now select Login and sign in."
+                            "Now select Login."
                         )
-
 
                     else:
 
                         try:
 
-                            error_data = response.json()
-
                             st.error(
-                                f"Sign Up failed: {error_data}"
+                                response.json()
                             )
 
                         except Exception:
 
                             st.error(
-                                f"Sign Up failed "
-                                f"({response.status_code}): "
-                                f"{response.text}"
+                                f"Sign Up failed: "
+                                f"{response.status_code}"
                             )
-
-
-                except requests.exceptions.RequestException as e:
-
-                    st.error(
-                        f"Connection error: {e}"
-                    )
 
 
                 except Exception as e:
 
                     st.error(
-                        f"Unexpected error: {e}"
+                        f"Connection error: {e}"
                     )
 
 
@@ -321,7 +252,7 @@ if st.session_state.token is None:
 
 
 # =========================================================
-# MAIN DASHBOARD
+# SIDEBAR
 # =========================================================
 
 st.sidebar.title(
@@ -345,6 +276,14 @@ st.sidebar.write(
 )
 
 st.sidebar.write(
+    "✅ Voice Interview"
+)
+
+st.sidebar.write(
+    "✅ Speech to Text"
+)
+
+st.sidebar.write(
     "✅ AI Evaluation"
 )
 
@@ -352,6 +291,10 @@ st.sidebar.write(
     "✅ Performance Report"
 )
 
+
+# =========================================================
+# MAIN TITLE
+# =========================================================
 
 st.title(
     "🤖 AI Job Interview Agent"
@@ -375,15 +318,13 @@ if st.session_state.step == "upload":
     )
 
 
-    candidate_name_input = st.text_input(
-        "Candidate Name",
-        key="candidate_name_input"
+    candidate_name = st.text_input(
+        "Candidate Name"
     )
 
 
-    role_input = st.text_input(
-        "Job Role",
-        key="job_role_input"
+    role = st.text_input(
+        "Job Role"
     )
 
 
@@ -397,8 +338,7 @@ if st.session_state.step == "upload":
             "TCS",
             "Wipro",
             "Other"
-        ],
-        key="target_company"
+        ]
     )
 
 
@@ -409,8 +349,7 @@ if st.session_state.step == "upload":
             "HR",
             "Behavioral",
             "Mixed"
-        ],
-        key="interview_type"
+        ]
     )
 
 
@@ -421,19 +360,17 @@ if st.session_state.step == "upload":
             "0-2 Years",
             "2-5 Years",
             "5+ Years"
-        ],
-        key="experience_level"
+        ]
     )
 
 
     uploaded_file = st.file_uploader(
         "Upload Resume (PDF)",
-        type=["pdf"],
-        key="resume_upload"
+        type=["pdf"]
     )
 
 
-    if uploaded_file is not None:
+    if uploaded_file:
 
         st.success(
             "✅ Resume Uploaded Successfully"
@@ -448,12 +385,10 @@ if st.session_state.step == "upload":
             "85/100"
         )
 
-
         col2.metric(
             "Skills",
             "Python, FastAPI"
         )
-
 
         col3.metric(
             "Experience",
@@ -470,21 +405,23 @@ if st.session_state.step == "upload":
 
         if st.button(
             "🚀 Start Interview",
-            key="start_interview_button"
+            use_container_width=True
         ):
 
-            if not candidate_name_input or not role_input:
+            if not candidate_name or not role:
 
                 st.error(
                     "Please enter name and role."
                 )
 
+                st.stop()
 
-            else:
 
-                with st.spinner(
-                    "AI generating questions..."
-                ):
+            with st.spinner(
+                "🤖 AI generating questions..."
+            ):
+
+                try:
 
                     files = {
                         "file": (
@@ -496,102 +433,80 @@ if st.session_state.step == "upload":
 
 
                     params = {
-                        "name": candidate_name_input,
-                        "role": role_input
+                        "name": candidate_name,
+                        "role": role
                     }
 
 
-                    try:
-
-                        response = requests.post(
-                            f"{BACKEND_URL}/upload-resume",
-                            files=files,
-                            params=params,
-                            timeout=120
-                        )
+                    response = requests.post(
+                        f"{BACKEND_URL}/upload-resume",
+                        files=files,
+                        params=params,
+                        timeout=120
+                    )
 
 
-                        if response.status_code == 200:
-
-                            try:
-
-                                data = response.json()
-
-                            except Exception:
-
-                                st.error(
-                                    "Backend returned invalid JSON."
-                                )
-
-                                st.code(
-                                    response.text
-                                )
-
-                                st.stop()
-
-
-                            questions = data.get(
-                                "questions",
-                                []
-                            )
-
-
-                            if not questions:
-
-                                st.error(
-                                    "Backend returned no interview questions."
-                                )
-
-
-                            else:
-
-                                st.session_state.questions = (
-                                    questions
-                                )
-
-                                st.session_state.candidate_name = (
-                                    candidate_name_input
-                                )
-
-                                st.session_state.job_role = (
-                                    role_input
-                                )
-
-                                st.session_state.answers = []
-
-                                st.session_state.current_q_index = 0
-
-                                st.session_state.step = (
-                                    "interview"
-                                )
-
-                                st.rerun()
-
-
-                        else:
-
-                            st.error(
-                                f"Backend Error: "
-                                f"{response.status_code}"
-                            )
-
-                            st.code(
-                                response.text
-                            )
-
-
-                    except requests.exceptions.RequestException as e:
+                    if response.status_code != 200:
 
                         st.error(
-                            f"Connection Error: {e}"
+                            f"Backend Error: "
+                            f"{response.status_code}"
                         )
 
+                        st.code(
+                            response.text
+                        )
 
-                    except Exception as e:
+                        st.stop()
+
+
+                    data = response.json()
+
+
+                    questions = data.get(
+                        "questions",
+                        []
+                    )
+
+
+                    if not questions:
 
                         st.error(
-                            f"Unexpected Error: {e}"
+                            "No interview questions received."
                         )
+
+                        st.stop()
+
+
+                    st.session_state.questions = (
+                        questions
+                    )
+
+                    st.session_state.candidate_name = (
+                        candidate_name
+                    )
+
+                    st.session_state.job_role = (
+                        role
+                    )
+
+                    st.session_state.answers = []
+
+                    st.session_state.current_q_index = 0
+
+                    st.session_state.step = (
+                        "interview"
+                    )
+
+
+                    st.rerun()
+
+
+                except Exception as e:
+
+                    st.error(
+                        f"Error: {e}"
+                    )
 
 
 # =========================================================
@@ -611,10 +526,8 @@ elif st.session_state.step == "interview":
             "No interview questions available."
         )
 
-
         if st.button(
-            "🔄 Back to Upload",
-            key="back_to_upload"
+            "🔄 Back to Upload"
         ):
 
             st.session_state.step = "upload"
@@ -629,12 +542,12 @@ elif st.session_state.step == "interview":
 
         st.subheader(
             f"💬 Interview Question "
-            f"{index + 1}/{len(questions)}"
+            f"{index + 1} / {len(questions)}"
         )
 
 
         # =================================================
-        # AI QUESTION
+        # QUESTION
         # =================================================
 
         st.info(
@@ -648,7 +561,7 @@ elif st.session_state.step == "interview":
 
         if st.button(
             "🔊 Listen Question",
-            key=f"listen_question_{index}"
+            key=f"listen_{index}"
         ):
 
             try:
@@ -680,15 +593,15 @@ elif st.session_state.step == "interview":
 
 
         # =================================================
-        # VOICE ANSWER STORAGE
+        # ANSWER KEY
         # =================================================
 
-        voice_key = f"voice_answer_{index}"
+        answer_key = f"answer_{index}"
 
 
-        if voice_key not in st.session_state:
+        if answer_key not in st.session_state:
 
-            st.session_state[voice_key] = ""
+            st.session_state[answer_key] = ""
 
 
         # =================================================
@@ -701,15 +614,14 @@ elif st.session_state.step == "interview":
 
 
         st.caption(
-            "You can type your answer OR answer using your voice."
+            "Type your answer OR use 🎤 voice."
         )
 
 
         answer = st.text_area(
-            "⌨️ Type your answer:",
-            value=st.session_state[voice_key],
-            height=150,
-            key=f"answer_{index}"
+            "⌨️ Answer",
+            key=answer_key,
+            height=150
         )
 
 
@@ -717,31 +629,31 @@ elif st.session_state.step == "interview":
 
 
         # =================================================
-        # VOICE RECORDING
+        # VOICE ANSWER
         # =================================================
 
         st.subheader(
-            "🎤 Answer using Voice"
+            "🎤 Voice Answer"
         )
 
 
         st.caption(
-            "Speak your answer and it will automatically "
-            "be converted into text."
+            "Speak your answer. "
+            "It will automatically become text."
         )
 
 
         audio = mic_recorder(
             start_prompt="🎙️ Start Recording",
             stop_prompt="⏹️ Stop Recording",
-            key=f"voice_recorder_{index}"
+            key=f"recorder_{index}"
         )
 
 
         if audio:
 
             st.success(
-                "✅ Voice recorded successfully!"
+                "✅ Recording received!"
             )
 
 
@@ -753,22 +665,18 @@ elif st.session_state.step == "interview":
 
             try:
 
+                # =========================================
+                # CONVERT AUDIO
+                # =========================================
+
                 recognizer = sr.Recognizer()
 
 
-                # -------------------------------------------------
-                # Get recorded audio
-                # -------------------------------------------------
+                audio_bytes = audio["bytes"]
 
-                audio_data = audio["bytes"]
-
-
-                # -------------------------------------------------
-                # Convert audio to WAV using pydub
-                # -------------------------------------------------
 
                 audio_segment = AudioSegment.from_file(
-                    io.BytesIO(audio_data)
+                    io.BytesIO(audio_bytes)
                 )
 
 
@@ -784,48 +692,61 @@ elif st.session_state.step == "interview":
                 wav_buffer.seek(0)
 
 
-                # -------------------------------------------------
-                # Read WAV audio
-                # -------------------------------------------------
+                # =========================================
+                # SPEECH RECOGNITION
+                # =========================================
 
-                audio_file = sr.AudioFile(
+                with sr.AudioFile(
                     wav_buffer
-                )
-
-
-                with audio_file as source:
+                ) as source:
 
                     recorded_audio = recognizer.record(
                         source
                     )
 
 
-                # -------------------------------------------------
-                # Speech to Text
-                # -------------------------------------------------
-
                 with st.spinner(
-                    "📝 Converting voice to text..."
+                    "📝 Converting speech to text..."
                 ):
 
-                    voice_text = recognizer.recognize_google(
-                        recorded_audio,
-                        language="en-IN"
+                    voice_text = (
+                        recognizer.recognize_google(
+                            recorded_audio,
+                            language="en-IN"
+                        )
                     )
 
 
-                # -------------------------------------------------
-                # IMPORTANT:
-                # Do NOT modify answer_0 / answer_1 widget state
-                # -------------------------------------------------
+                # =========================================
+                # STORE TEXT
+                # =========================================
 
-                st.session_state[voice_key] = voice_text
+                st.session_state[answer_key] = (
+                    voice_text
+                )
 
 
                 st.success(
-                    "✅ Voice converted to text!"
+                    "✅ Speech converted to text!"
                 )
 
+
+                # =========================================
+                # SHOW RESULT
+                # =========================================
+
+                st.write(
+                    "📝 Converted Answer:"
+                )
+
+                st.write(
+                    voice_text
+                )
+
+
+                # =========================================
+                # REFRESH ONCE
+                # =========================================
 
                 st.rerun()
 
@@ -833,20 +754,15 @@ elif st.session_state.step == "interview":
             except sr.UnknownValueError:
 
                 st.error(
-                    "❌ I could not understand your voice. "
-                    "Please try again."
+                    "❌ Voice could not be understood."
                 )
 
 
-            except sr.RequestError as e:
+            except sr.RequestError:
 
                 st.error(
                     "❌ Speech recognition service "
-                    "is unavailable."
-                )
-
-                st.code(
-                    str(e)
+                    "is temporarily unavailable."
                 )
 
 
@@ -858,143 +774,128 @@ elif st.session_state.step == "interview":
 
 
         # =================================================
-        # NEXT / SUBMIT
+        # NEXT BUTTON
         # =================================================
 
-        button_text = (
-            "Next Question ➡️"
-            if index < len(questions) - 1
-            else "Submit Interview 🎓"
-        )
+        if index < len(questions) - 1:
+
+            button_text = (
+                "Next Question ➡️"
+            )
+
+        else:
+
+            button_text = (
+                "Submit Interview 🎓"
+            )
 
 
         if st.button(
             button_text,
-            key=f"next_question_{index}"
+            key=f"next_{index}",
+            use_container_width=True
         ):
 
-            # Get answer from text widget
 
             final_answer = st.session_state.get(
-                f"answer_{index}",
+                answer_key,
                 ""
             )
-
-
-            # If text widget is empty,
-            # use voice answer
-
-            if not final_answer.strip():
-
-                final_answer = st.session_state.get(
-                    voice_key,
-                    ""
-                )
 
 
             if not final_answer.strip():
 
                 st.warning(
-                    "⌨️ Please type an answer "
-                    "or 🎤 record your answer."
+                    "Please type an answer "
+                    "or record your voice."
                 )
 
+                st.stop()
+
+
+            # =============================================
+            # SAVE ANSWER
+            # =============================================
+
+            st.session_state.answers.append(
+                {
+                    "question": current_question,
+                    "answer": final_answer
+                }
+            )
+
+
+            # =============================================
+            # NEXT QUESTION
+            # =============================================
+
+            if index < len(questions) - 1:
+
+                st.session_state.current_q_index += 1
+
+                st.rerun()
+
+
+            # =============================================
+            # SUBMIT INTERVIEW
+            # =============================================
 
             else:
 
-                st.session_state.answers.append(
-                    {
-                        "question": current_question,
-                        "answer": final_answer
+                with st.spinner(
+                    "🤖 AI evaluating interview..."
+                ):
+
+                    payload = {
+                        "name":
+                        st.session_state.candidate_name,
+
+                        "role":
+                        st.session_state.job_role,
+
+                        "answers":
+                        st.session_state.answers
                     }
-                )
 
 
-                if index < len(questions) - 1:
+                    try:
 
-                    st.session_state.current_q_index += 1
-
-                    st.rerun()
-
-
-                else:
-
-                    with st.spinner(
-                        "🤖 AI evaluating answers..."
-                    ):
-
-                        payload = {
-                            "name":
-                            st.session_state.candidate_name,
-
-                            "role":
-                            st.session_state.job_role,
-
-                            "answers":
-                            st.session_state.answers
-                        }
+                        response = requests.post(
+                            f"{BACKEND_URL}/submit-interview",
+                            json=payload,
+                            timeout=120
+                        )
 
 
-                        try:
+                        if response.status_code == 200:
 
-                            response = requests.post(
-                                f"{BACKEND_URL}/submit-interview",
-                                json=payload,
-                                timeout=120
+                            st.session_state.report = (
+                                response.json()
                             )
 
+                            st.session_state.step = (
+                                "report"
+                            )
 
-                            if response.status_code == 200:
-
-                                try:
-
-                                    st.session_state.report = (
-                                        response.json()
-                                    )
-
-                                except Exception:
-
-                                    st.error(
-                                        "Backend returned invalid report."
-                                    )
-
-                                    st.code(
-                                        response.text
-                                    )
-
-                                    st.stop()
+                            st.rerun()
 
 
-                                st.session_state.step = (
-                                    "report"
-                                )
-
-                                st.rerun()
-
-
-                            else:
-
-                                st.error(
-                                    "Report generation failed."
-                                )
-
-                                st.code(
-                                    response.text
-                                )
-
-
-                        except requests.exceptions.RequestException as e:
+                        else:
 
                             st.error(
-                                f"Connection Error: {e}"
+                                "Report generation failed."
+                            )
+
+                            st.code(
+                                response.text
                             )
 
 
-                        except Exception as e:
+                    except Exception as e:
 
-                            st.error(
-                                f"Unexpected Error: {e}"
-                            )
+                        st.error(
+                            f"Connection error: {e}"
+                        )
 
 
 # =========================================================
@@ -1007,14 +908,14 @@ elif st.session_state.step == "report":
 
 
     st.success(
-        "🎉 Interview Completed Successfully"
+        "🎉 Interview Completed Successfully!"
     )
 
 
     report = st.session_state.report
 
 
-    if report is None:
+    if not report:
 
         st.error(
             "Report data is not available."
@@ -1024,7 +925,7 @@ elif st.session_state.step == "report":
 
 
     # =====================================================
-    # CANDIDATE INFORMATION
+    # CANDIDATE
     # =====================================================
 
     st.info(
@@ -1037,7 +938,7 @@ elif st.session_state.step == "report":
 
 
     # =====================================================
-    # PERFORMANCE REPORT
+    # PERFORMANCE
     # =====================================================
 
     st.subheader(
@@ -1127,22 +1028,15 @@ elif st.session_state.step == "report":
         )
 
 
-    st.markdown(
-        "---"
-    )
+    st.divider()
 
 
     # =====================================================
-    # AI FEEDBACK
+    # FEEDBACK
     # =====================================================
 
     st.subheader(
         "💡 AI Feedback"
-    )
-
-
-    st.caption(
-        "AI evaluation for each interview answer"
     )
 
 
@@ -1176,23 +1070,22 @@ elif st.session_state.step == "report":
         )
 
 
-    # =====================================================
-    # PDF REPORT
-    # =====================================================
+    st.divider()
 
-    st.markdown(
-        "---"
-    )
 
+    # =====================================================
+    # PDF
+    # =====================================================
 
     if st.button(
         "📄 Generate PDF Report",
-        key="generate_pdf_button"
+        use_container_width=True
     ):
 
         try:
 
             pdf_file = generate_pdf_report(
+
                 filename="Interview_Report.pdf",
 
                 candidate_name=report[
@@ -1226,7 +1119,7 @@ elif st.session_state.step == "report":
 
 
             st.success(
-                "✅ PDF Report Generated Successfully!"
+                "✅ PDF Generated!"
             )
 
 
@@ -1236,11 +1129,10 @@ elif st.session_state.step == "report":
             ) as file:
 
                 st.download_button(
-                    label="⬇️ Download PDF",
+                    "⬇️ Download PDF",
                     data=file,
                     file_name="Interview_Report.pdf",
-                    mime="application/pdf",
-                    key="download_pdf_button"
+                    mime="application/pdf"
                 )
 
 
@@ -1252,12 +1144,12 @@ elif st.session_state.step == "report":
 
 
     # =====================================================
-    # RESTART INTERVIEW
+    # RESTART
     # =====================================================
 
     if st.button(
         "🔄 Restart Interview",
-        key="restart_interview_button"
+        use_container_width=True
     ):
 
         st.session_state.step = "upload"
@@ -1273,5 +1165,6 @@ elif st.session_state.step == "report":
         st.session_state.job_role = ""
 
         st.session_state.report = None
+
 
         st.rerun()
