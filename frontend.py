@@ -2,7 +2,9 @@ import streamlit as st
 import requests
 from gtts import gTTS
 import speech_recognition as sr
+from pydub import AudioSegment
 import io
+import os
 
 from report import generate_pdf_report
 from streamlit_mic_recorder import mic_recorder
@@ -15,7 +17,8 @@ from streamlit_mic_recorder import mic_recorder
 st.set_page_config(
     page_title="AI Job Interview Agent",
     page_icon="🤖",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 
@@ -27,146 +30,186 @@ BACKEND_URL = "https://ai-study-agent-xqis.onrender.com"
 
 
 # =========================================================
-# LANGUAGE SETTINGS
+# LANGUAGE DATA
 # =========================================================
 
-LANGUAGES = {
+LANGUAGE_DATA = {
+
     "English": {
         "speech": "en-IN",
-        "tts": "en"
+        "tts": "en",
+
+        "title": "AI Job Interview Agent",
+        "subtitle": "AI Powered Resume Analysis & Mock Interview System",
+
+        "candidate": "Candidate Name",
+        "role": "Job Role",
+        "company": "Target Company",
+        "interview_type": "Interview Type",
+        "experience": "Experience Level",
+
+        "language": "Interview Language",
+
+        "upload_resume": "Upload Resume (PDF)",
+        "start": "🚀 Start Interview",
+
+        "question": "Interview Question",
+        "listen": "🔊 Listen Question",
+
+        "voice_answer": "🎤 Voice Answer",
+        "voice_help": "Speak your answer. It will automatically convert to text.",
+
+        "text_answer": "📝 Your Answer",
+        "text_help": "You can edit the converted text or type manually.",
+
+        "coach": "💡 Answer Coach",
+        "coach_help": "These are hints, not a ready-made answer.",
+
+        "next": "Next Question ➡️",
+        "submit": "Submit Interview 🎓",
+
+        "recorded": "✅ Voice recorded successfully!",
+        "converting": "📝 Converting voice to text...",
+
+        "empty_answer": "Please type an answer or record your voice.",
+
+        "report": "📊 Performance Report",
+        "feedback": "💡 AI Feedback",
+        "restart": "🔄 Restart Interview"
     },
 
-    "Hindi": {
-        "speech": "hi-IN",
-        "tts": "hi"
-    },
 
     "Gujarati": {
         "speech": "gu-IN",
-        "tts": "gu"
+        "tts": "gu",
+
+        "title": "AI જોબ ઇન્ટરવ્યૂ એજન્ટ",
+        "subtitle": "AI આધારિત Resume Analysis અને Mock Interview System",
+
+        "candidate": "ઉમેદવારનું નામ",
+        "role": "જોબ રોલ",
+        "company": "Target Company",
+        "interview_type": "ઇન્ટરવ્યૂ પ્રકાર",
+        "experience": "અનુભવનું સ્તર",
+
+        "language": "ઇન્ટરવ્યૂ ભાષા",
+
+        "upload_resume": "Resume Upload કરો (PDF)",
+        "start": "🚀 ઇન્ટરવ્યૂ શરૂ કરો",
+
+        "question": "ઇન્ટરવ્યૂ પ્રશ્ન",
+        "listen": "🔊 પ્રશ્ન સાંભળો",
+
+        "voice_answer": "🎤 Voice Answer",
+        "voice_help": "તમારો જવાબ બોલો. તે આપમેળે Textમાં બદલાશે.",
+
+        "text_answer": "📝 તમારો જવાબ",
+        "text_help": "Voiceમાંથી આવેલ જવાબ edit કરી શકો છો અથવા manually લખી શકો છો.",
+
+        "coach": "💡 Answer Coach",
+        "coach_help": "આ માત્ર hints છે, ready-made answer નથી.",
+
+        "next": "આગળનો પ્રશ્ન ➡️",
+        "submit": "ઇન્ટરવ્યૂ Submit કરો 🎓",
+
+        "recorded": "✅ Voice સફળતાપૂર્વક record થયો!",
+        "converting": "📝 Voice ને Textમાં convert કરી રહ્યા છીએ...",
+
+        "empty_answer": "કૃપા કરીને જવાબ લખો અથવા voice record કરો.",
+
+        "report": "📊 Performance Report",
+        "feedback": "💡 AI Feedback",
+        "restart": "🔄 ઇન્ટરવ્યૂ ફરી શરૂ કરો"
     },
+
+
+    "Hindi": {
+        "speech": "hi-IN",
+        "tts": "hi",
+
+        "title": "AI जॉब इंटरव्यू एजेंट",
+        "subtitle": "AI आधारित Resume Analysis और Mock Interview System",
+
+        "candidate": "उम्मीदवार का नाम",
+        "role": "जॉब रोल",
+        "company": "Target Company",
+        "interview_type": "इंटरव्यू प्रकार",
+        "experience": "अनुभव स्तर",
+
+        "language": "इंटरव्यू भाषा",
+
+        "upload_resume": "Resume Upload करें (PDF)",
+        "start": "🚀 इंटरव्यू शुरू करें",
+
+        "question": "इंटरव्यू प्रश्न",
+        "listen": "🔊 प्रश्न सुनें",
+
+        "voice_answer": "🎤 Voice Answer",
+        "voice_help": "अपना जवाब बोलें। यह अपने आप Text में बदल जाएगा।",
+
+        "text_answer": "📝 आपका जवाब",
+        "text_help": "Voice से आए जवाब को edit कर सकते हैं या manually लिख सकते हैं।",
+
+        "coach": "💡 Answer Coach",
+        "coach_help": "ये केवल hints हैं, ready-made answer नहीं।",
+
+        "next": "अगला प्रश्न ➡️",
+        "submit": "इंटरव्यू Submit करें 🎓",
+
+        "recorded": "✅ Voice सफलतापूर्वक record हुई!",
+        "converting": "📝 Voice को Text में convert किया जा रहा है...",
+
+        "empty_answer": "कृपया जवाब लिखें या voice record करें।",
+
+        "report": "📊 Performance Report",
+        "feedback": "💡 AI Feedback",
+        "restart": "🔄 इंटरव्यू फिर से शुरू करें"
+    },
+
 
     "Hinglish": {
         "speech": "en-IN",
-        "tts": "en"
+        "tts": "en",
+
+        "title": "AI Job Interview Agent",
+        "subtitle": "AI Powered Resume Analysis & Mock Interview System",
+
+        "candidate": "Candidate Name",
+        "role": "Job Role",
+        "company": "Target Company",
+        "interview_type": "Interview Type",
+        "experience": "Experience Level",
+
+        "language": "Interview Language",
+
+        "upload_resume": "Upload Resume (PDF)",
+        "start": "🚀 Start Interview",
+
+        "question": "Interview Question",
+        "listen": "🔊 Listen Question",
+
+        "voice_answer": "🎤 Voice Answer",
+        "voice_help": "Apna answer bolo. Ye automatically Text mein convert hoga.",
+
+        "text_answer": "📝 Your Answer",
+        "text_help": "Converted text ko edit kar sakte ho ya manually type kar sakte ho.",
+
+        "coach": "💡 Answer Coach",
+        "coach_help": "Ye hints hain, ready-made answer nahi.",
+
+        "next": "Next Question ➡️",
+        "submit": "Submit Interview 🎓",
+
+        "recorded": "✅ Voice successfully recorded!",
+        "converting": "📝 Voice ko Text mein convert kar rahe hain...",
+
+        "empty_answer": "Please answer type karo ya voice record karo.",
+
+        "report": "📊 Performance Report",
+        "feedback": "💡 AI Feedback",
+        "restart": "🔄 Restart Interview"
     }
 }
-
-
-# =========================================================
-# TEXT TO SPEECH
-# =========================================================
-
-def speak_question(text, language):
-
-    lang_code = LANGUAGES[
-        language
-    ]["tts"]
-
-    tts = gTTS(
-        text=text,
-        lang=lang_code
-    )
-
-    audio_file = "question_audio.mp3"
-
-    tts.save(audio_file)
-
-    return audio_file
-
-
-# =========================================================
-# ANSWER COACH
-# =========================================================
-
-def get_answer_coach(question):
-
-    q = question.lower()
-
-    if (
-        "project" in q
-        or "challenge" in q
-        or "worked on" in q
-    ):
-
-        return [
-            "💡 Explain what the project was.",
-            "💡 Mention your role and technologies used.",
-            "💡 Explain the challenge and how you solved it.",
-            "💡 Mention the final result."
-        ]
-
-
-    if (
-        "strength" in q
-        or "good at" in q
-    ):
-
-        return [
-            "💡 Mention 1–2 genuine strengths.",
-            "💡 Give a short example.",
-            "💡 Explain how the strength helps in this role."
-        ]
-
-
-    if (
-        "weakness" in q
-        or "improve" in q
-    ):
-
-        return [
-            "💡 Mention one genuine area for improvement.",
-            "💡 Explain what you are doing to improve.",
-            "💡 Show a positive learning attitude."
-        ]
-
-
-    if (
-        "technical" in q
-        or "python" in q
-        or "fastapi" in q
-        or "database" in q
-        or "programming" in q
-    ):
-
-        return [
-            "💡 Start with the basic concept.",
-            "💡 Give a practical example.",
-            "💡 Explain why you would use it."
-        ]
-
-
-    if (
-        "why" in q
-        or "fit" in q
-        or "hire" in q
-    ):
-
-        return [
-            "💡 Connect your skills with the job.",
-            "💡 Mention your relevant experience or projects.",
-            "💡 Explain what value you can bring."
-        ]
-
-
-    if (
-        "introduce" in q
-        or "tell me about yourself" in q
-    ):
-
-        return [
-            "💡 Start with your education/background.",
-            "💡 Mention important technical skills.",
-            "💡 Mention a relevant project.",
-            "💡 Finish with your career goal."
-        ]
-
-
-    return [
-        "💡 Answer the question directly.",
-        "💡 Give a relevant example.",
-        "💡 Keep your answer clear and concise."
-    ]
 
 
 # =========================================================
@@ -209,6 +252,83 @@ for key, value in defaults.items():
 
 
 # =========================================================
+# TEXT TO SPEECH
+# =========================================================
+
+def speak_question(text, language):
+
+    lang = LANGUAGE_DATA[language]["tts"]
+
+    tts = gTTS(
+        text=text,
+        lang=lang
+    )
+
+    filename = "question_audio.mp3"
+
+    tts.save(filename)
+
+    return filename
+
+
+# =========================================================
+# ANSWER COACH
+# =========================================================
+
+def get_answer_coach(question):
+
+    q = question.lower()
+
+    if "project" in q or "challenge" in q:
+
+        return [
+            "💡 Project શું હતું તે જણાવો.",
+            "💡 તમારો role અને technology જણાવો.",
+            "💡 કયો challenge આવ્યો અને કેવી રીતે solve કર્યો તે કહો.",
+            "💡 Final result જણાવો."
+        ]
+
+    if "strength" in q:
+
+        return [
+            "💡 તમારી 1-2 genuine strengths જણાવો.",
+            "💡 એક practical example આપો.",
+            "💡 આ strength jobમાં કેવી રીતે મદદ કરશે તે સમજાવો."
+        ]
+
+    if "weakness" in q:
+
+        return [
+            "💡 એક genuine weakness જણાવો.",
+            "💡 તેને improve કરવા શું કરો છો તે કહો.",
+            "💡 Learning attitude બતાવો."
+        ]
+
+    if "why" in q or "fit" in q or "hire" in q:
+
+        return [
+            "💡 તમારી skills ને job સાથે connect કરો.",
+            "💡 Relevant project અથવા experience જણાવો.",
+            "💡 Company માટે તમે શું value લાવી શકો તે કહો."
+        ]
+
+    if "introduce" in q or "yourself" in q:
+
+        return [
+            "💡 Education/backgroundથી શરૂઆત કરો.",
+            "💡 Important technical skills જણાવો.",
+            "💡 Relevant project જણાવો.",
+            "💡 Career goal સાથે answer finish કરો."
+        ]
+
+    return [
+        "💡 Questionનો direct જવાબ આપો.",
+        "💡 Relevant example આપો.",
+        "💡 Answer clear અને concise રાખો."
+    ]
+
+
+# =========================================================
 # LOGIN
 # =========================================================
 
@@ -222,9 +342,7 @@ if st.session_state.token is None:
         horizontal=True
     )
 
-    login_name = st.text_input(
-        "Name"
-    )
+    login_name = st.text_input("Name")
 
     password = st.text_input(
         "Password",
@@ -270,11 +388,10 @@ if st.session_state.token is None:
 
                         data = response.json()
 
-
                         if "access_token" not in data:
 
                             st.error(
-                                "Login response does not contain token."
+                                "Login token not received."
                             )
 
                             st.stop()
@@ -285,17 +402,12 @@ if st.session_state.token is None:
                         )
 
 
-                        # ---------------------------------
-                        # USER INFORMATION
-                        # ---------------------------------
-
                         try:
 
                             headers = {
                                 "Authorization":
                                 f"Bearer {st.session_state.token}"
                             }
-
 
                             user_response = requests.get(
 
@@ -417,71 +529,70 @@ if st.session_state.token is None:
 
 
 # =========================================================
+# LANGUAGE
+# =========================================================
+
+if st.session_state.step == "upload":
+
+    language = st.selectbox(
+        "🌐 Interview Language",
+        list(LANGUAGE_DATA.keys())
+    )
+
+    st.session_state.selected_language = language
+
+
+else:
+
+    language = st.session_state.selected_language
+
+
+T = LANGUAGE_DATA[language]
+
+
+# =========================================================
 # SIDEBAR
 # =========================================================
 
-st.sidebar.title(
-    "📋 Dashboard"
-)
+st.sidebar.title("📋 Dashboard")
 
 st.sidebar.success(
-    "Project Status : Running"
+    "🟢 Project Running"
 )
 
-st.sidebar.write(
-    "✅ Resume Upload"
-)
+st.sidebar.write("✅ Resume Upload")
+st.sidebar.write("✅ AI Questions")
+st.sidebar.write("✅ Voice Interview")
+st.sidebar.write("✅ Speech to Text")
+st.sidebar.write("✅ Multi Language")
+st.sidebar.write("✅ Answer Coach")
+st.sidebar.write("✅ AI Evaluation")
+st.sidebar.write("✅ Performance Report")
 
-st.sidebar.write(
-    "✅ AI Resume Analysis"
-)
+st.sidebar.divider()
 
-st.sidebar.write(
-    "✅ Mock Interview"
-)
-
-st.sidebar.write(
-    "✅ Voice Interview"
-)
-
-st.sidebar.write(
-    "✅ Multi-Language"
-)
-
-st.sidebar.write(
-    "✅ Speech to Text"
-)
-
-st.sidebar.write(
-    "✅ AI Answer Coach"
-)
-
-st.sidebar.write(
-    "✅ AI Evaluation"
-)
-
-st.sidebar.write(
-    "✅ Performance Report"
+st.sidebar.info(
+    f"🌐 Language\n\n{language}"
 )
 
 
 # =========================================================
-# MAIN TITLE
+# MAIN HEADER
 # =========================================================
 
 st.title(
-    "🤖 AI Job Interview Agent"
+    f"🤖 {T['title']}"
 )
 
-st.subheader(
-    "AI Powered Resume Analysis & Mock Interview System"
+st.caption(
+    T["subtitle"]
 )
 
 st.divider()
 
 
 # =========================================================
-# STEP 1 : RESUME UPLOAD
+# STEP 1 : UPLOAD
 # =========================================================
 
 if st.session_state.step == "upload":
@@ -491,46 +602,54 @@ if st.session_state.step == "upload":
     )
 
 
-    candidate_name = st.text_input(
-        "Candidate Name"
-    )
+    col1, col2 = st.columns(2)
 
 
-    role = st.text_input(
-        "Job Role"
-    )
+    with col1:
+
+        candidate_name = st.text_input(
+            T["candidate"]
+        )
 
 
-    company = st.selectbox(
-        "Target Company",
-
-        [
-            "Google",
-            "Microsoft",
-            "Amazon",
-            "Infosys",
-            "TCS",
-            "Wipro",
-            "Accenture",
-            "Other"
-        ]
-    )
+        role = st.text_input(
+            T["role"]
+        )
 
 
-    interview_type = st.selectbox(
-        "Interview Type",
+    with col2:
 
-        [
-            "Technical",
-            "HR",
-            "Behavioral",
-            "Mixed"
-        ]
-    )
+        company = st.selectbox(
+            T["company"],
+
+            [
+                "Google",
+                "Microsoft",
+                "Amazon",
+                "Infosys",
+                "TCS",
+                "Wipro",
+                "Accenture",
+                "Other"
+            ]
+        )
+
+
+        interview_type = st.selectbox(
+            T["interview_type"],
+
+            [
+                "Technical",
+                "HR",
+                "Behavioral",
+                "Mixed"
+            ]
+        )
 
 
     experience = st.selectbox(
-        "Experience Level",
+
+        T["experience"],
 
         [
             "Fresher",
@@ -541,57 +660,9 @@ if st.session_state.step == "upload":
     )
 
 
-    # =====================================================
-    # LANGUAGE
-    # =====================================================
-
-    selected_language = st.selectbox(
-
-        "🌐 Interview Language",
-
-        list(LANGUAGES.keys()),
-
-        index=0
-    )
-
-
-    st.session_state.selected_language = (
-        selected_language
-    )
-
-
-    if selected_language == "English":
-
-        st.caption(
-            "🇬🇧 Interview will use English speech recognition."
-        )
-
-    elif selected_language == "Hindi":
-
-        st.caption(
-            "🇮🇳 Interview will use Hindi speech recognition."
-        )
-
-    elif selected_language == "Gujarati":
-
-        st.caption(
-            "🪔 Interview will use Gujarati speech recognition."
-        )
-
-    else:
-
-        st.caption(
-            "🗣️ Hinglish uses Indian English speech recognition."
-        )
-
-
-    # =====================================================
-    # RESUME
-    # =====================================================
-
     uploaded_file = st.file_uploader(
 
-        "Upload Resume (PDF)",
+        T["upload_resume"],
 
         type=["pdf"]
     )
@@ -600,26 +671,26 @@ if st.session_state.step == "upload":
     if uploaded_file:
 
         st.success(
-            "✅ Resume Uploaded Successfully"
+            "✅ Resume Uploaded Successfully!"
         )
 
 
-        col1, col2, col3 = st.columns(3)
+        c1, c2, c3 = st.columns(3)
 
 
-        col1.metric(
+        c1.metric(
             "Resume Score",
             "85/100"
         )
 
 
-        col2.metric(
+        c2.metric(
             "Skills",
             "Python, FastAPI"
         )
 
 
-        col3.metric(
+        c3.metric(
             "Experience",
             experience
         )
@@ -628,13 +699,12 @@ if st.session_state.step == "upload":
         st.progress(85)
 
 
-        # =================================================
-        # START INTERVIEW
-        # =================================================
+        st.divider()
+
 
         if st.button(
 
-            "🚀 Start Interview",
+            T["start"],
 
             use_container_width=True
         ):
@@ -643,17 +713,15 @@ if st.session_state.step == "upload":
             if not candidate_name or not role:
 
                 st.error(
-                    "Please enter name and role."
+                    "Please enter candidate name and job role."
                 )
 
                 st.stop()
 
 
             with st.spinner(
-
-                "🤖 AI generating questions..."
+                "🤖 AI generating interview questions..."
             ):
-
 
                 try:
 
@@ -695,7 +763,6 @@ if st.session_state.step == "upload":
                     if response.status_code != 200:
 
                         st.error(
-
                             f"Backend Error: "
                             f"{response.status_code}"
                         )
@@ -709,11 +776,8 @@ if st.session_state.step == "upload":
 
                     data = response.json()
 
-
                     questions = data.get(
-
                         "questions",
-
                         []
                     )
 
@@ -721,16 +785,11 @@ if st.session_state.step == "upload":
                     if not questions:
 
                         st.error(
-
-                            "Backend returned no questions."
+                            "No interview questions received."
                         )
 
                         st.stop()
 
-
-                    # -------------------------------------
-                    # SAVE INTERVIEW DATA
-                    # -------------------------------------
 
                     st.session_state.questions = (
                         questions
@@ -753,7 +812,6 @@ if st.session_state.step == "upload":
                     st.session_state.coach_visible = False
 
                     st.session_state.step = "interview"
-
 
                     st.rerun()
 
@@ -782,496 +840,465 @@ elif st.session_state.step == "interview":
             "No interview questions available."
         )
 
-        if st.button(
-            "🔄 Back to Upload"
-        ):
-
-            st.session_state.step = "upload"
-
-            st.rerun()
+        st.stop()
 
 
-    else:
-
-        current_question = questions[index]
+    current_question = questions[index]
 
 
-        # =================================================
-        # PROGRESS
-        # =================================================
+    # =====================================================
+    # PROGRESS
+    # =====================================================
 
-        progress_value = (
+    progress = (
 
-            (index + 1)
+        (index + 1)
 
-            /
+        /
 
-            len(questions)
+        len(questions)
+    )
+
+
+    st.progress(
+        progress
+    )
+
+
+    st.caption(
+        f"🎯 {T['question']} "
+        f"{index + 1} / {len(questions)}"
+    )
+
+
+    # =====================================================
+    # QUESTION CARD
+    # =====================================================
+
+    st.markdown(
+        "### 💬 Question"
+    )
+
+    st.info(
+        current_question
+    )
+
+
+    # =====================================================
+    # LISTEN
+    # =====================================================
+
+    if st.button(
+
+        T["listen"],
+
+        key=f"listen_{index}"
+    ):
+
+        try:
+
+            audio_file = speak_question(
+
+                current_question,
+
+                language
+            )
+
+
+            with open(
+                audio_file,
+                "rb"
+            ) as audio:
+
+                st.audio(
+                    audio.read(),
+                    format="audio/mp3"
+                )
+
+
+        except Exception as e:
+
+            st.error(
+                f"Voice generation failed: {e}"
+            )
+
+
+    st.divider()
+
+
+    # =====================================================
+    # ANSWER COACH
+    # =====================================================
+
+    coach_col1, coach_col2 = st.columns(
+        [1, 4]
+    )
+
+
+    with coach_col1:
+
+        coach_clicked = st.button(
+
+            T["coach"],
+
+            key=f"coach_{index}"
         )
 
 
-        st.progress(
-            progress_value
+    if coach_clicked:
+
+        st.session_state.coach_visible = (
+            not st.session_state.coach_visible
         )
 
 
-        st.caption(
-
-            f"Question "
-            f"{index + 1} / {len(questions)}"
-        )
-
-
-        # =================================================
-        # QUESTION
-        # =================================================
-
-        st.subheader(
-
-            f"💬 Interview Question "
-            f"{index + 1}"
-        )
-
+    if st.session_state.coach_visible:
 
         st.info(
+            T["coach_help"]
+        )
+
+
+        coach_points = get_answer_coach(
+
             current_question
         )
 
 
-        # =================================================
-        # QUESTION VOICE
-        # =================================================
+        for point in coach_points:
 
-        if st.button(
-
-            "🔊 Listen Question",
-
-            key=f"listen_question_{index}"
-        ):
+            st.write(
+                point
+            )
 
 
-            try:
+    st.divider()
 
-                audio_file = speak_question(
 
-                    current_question,
+    # =====================================================
+    # VOICE ANSWER
+    # =====================================================
 
-                    st.session_state.selected_language
+    st.markdown(
+        f"### {T['voice_answer']}"
+    )
+
+
+    st.caption(
+        T["voice_help"]
+    )
+
+
+    audio = mic_recorder(
+
+        start_prompt="🎙️ Start Recording",
+
+        stop_prompt="⏹️ Stop Recording",
+
+        key=f"voice_recorder_{index}"
+    )
+
+
+    # =====================================================
+    # VOICE PROCESSING
+    # =====================================================
+
+    if audio:
+
+        st.success(
+            T["recorded"]
+        )
+
+
+        st.audio(
+            audio["bytes"],
+            format="audio/wav"
+        )
+
+
+        try:
+
+            # ---------------------------------------------
+            # GET AUDIO
+            # ---------------------------------------------
+
+            raw_audio = audio["bytes"]
+
+
+            # ---------------------------------------------
+            # CONVERT TO WAV USING PYDUB
+            # ---------------------------------------------
+
+            audio_segment = AudioSegment.from_file(
+
+                io.BytesIO(raw_audio)
+            )
+
+
+            wav_buffer = io.BytesIO()
+
+
+            audio_segment.export(
+
+                wav_buffer,
+
+                format="wav"
+            )
+
+
+            wav_buffer.seek(0)
+
+
+            # ---------------------------------------------
+            # SPEECH RECOGNITION
+            # ---------------------------------------------
+
+            recognizer = sr.Recognizer()
+
+
+            with sr.AudioFile(
+
+                wav_buffer
+
+            ) as source:
+
+                recorded_audio = recognizer.record(
+                    source
                 )
 
 
-                with open(
+            speech_language = LANGUAGE_DATA[
 
-                    audio_file,
+                language
 
-                    "rb"
-                ) as audio:
+            ]["speech"]
 
-                    st.audio(
 
-                        audio.read(),
+            with st.spinner(
+                T["converting"]
+            ):
 
-                        format="audio/mp3"
+                converted_text = (
+
+                    recognizer.recognize_google(
+
+                        recorded_audio,
+
+                        language=speech_language
                     )
-
-
-            except Exception as e:
-
-                st.error(
-
-                    f"Voice generation failed: {e}"
                 )
 
 
-        st.divider()
+            # ---------------------------------------------
+            # SAVE TEXT
+            # ---------------------------------------------
 
-
-        # =================================================
-        # ANSWER COACH
-        # =================================================
-
-        if st.button(
-
-            "💡 Answer Coach",
-
-            key=f"coach_button_{index}"
-        ):
-
-            st.session_state.coach_visible = (
-                not st.session_state.coach_visible
+            st.session_state.voice_text[index] = (
+                converted_text
             )
 
-
-        if st.session_state.coach_visible:
-
-            st.info(
-                "💡 These are hints, not a ready-made answer."
-            )
-
-
-            coach_points = get_answer_coach(
-
-                current_question
-            )
-
-
-            for point in coach_points:
-
-                st.write(
-                    point
-                )
-
-
-        st.divider()
-
-
-        # =================================================
-        # ANSWER STATE
-        # =================================================
-
-        voice_text_key = (
-
-            f"voice_text_{index}"
-        )
-
-
-        widget_key = (
-
-            f"answer_box_{index}"
-        )
-
-
-        saved_voice_text = (
-
-            st.session_state.voice_text.get(
-
-                index,
-
-                ""
-            )
-        )
-
-
-        # =================================================
-        # VOICE RECORDING
-        # =================================================
-
-        st.subheader(
-            "🎤 Voice Answer"
-        )
-
-
-        st.caption(
-
-            "Speak your answer. "
-            "It will automatically convert to text."
-        )
-
-
-        audio = mic_recorder(
-
-            start_prompt="🎙️ Start Recording",
-
-            stop_prompt="⏹️ Stop Recording",
-
-            key=f"voice_recorder_{index}"
-        )
-
-
-        # =================================================
-        # PROCESS VOICE BEFORE TEXT WIDGET
-        # =================================================
-
-        if audio:
 
             st.success(
-                "✅ Recording received!"
+                "📝 Voice converted successfully!"
             )
 
 
-            st.audio(
+        except sr.UnknownValueError:
 
-                audio["bytes"],
-
-                format="audio/wav"
+            st.error(
+                "❌ Voice samajh nahi aavi. "
+                "Please clearly speak and try again."
             )
 
 
-            try:
+        except sr.RequestError:
 
-                recognizer = sr.Recognizer()
-
-
-                audio_bytes = audio["bytes"]
-
-
-                # -----------------------------------------
-                # DIRECT WAV
-                # No pydub / ffprobe required
-                # -----------------------------------------
-
-                audio_buffer = io.BytesIO(
-
-                    audio_bytes
-                )
+            st.error(
+                "❌ Speech recognition service unavailable."
+            )
 
 
-                with sr.AudioFile(
+        except Exception as e:
 
-                    audio_buffer
-
-                ) as source:
-
-                    recorded_audio = (
-
-                        recognizer.record(
-
-                            source
-                        )
-                    )
+            st.error(
+                f"❌ Voice-to-text failed: {e}"
+            )
 
 
-                language_code = LANGUAGES[
+    # =====================================================
+    # TEXT ANSWER
+    # =====================================================
 
-                    st.session_state.selected_language
-
-                ]["speech"]
-
-
-                with st.spinner(
-
-                    "📝 Converting voice to text..."
-                ):
+    st.markdown(
+        f"### {T['text_answer']}"
+    )
 
 
-                    voice_text = (
-
-                        recognizer.recognize_google(
-
-                            recorded_audio,
-
-                            language=language_code
-                        )
-                    )
+    st.caption(
+        T["text_help"]
+    )
 
 
-                # -----------------------------------------
-                # SAVE VOICE TEXT
-                # -----------------------------------------
+    existing_text = (
 
-                st.session_state.voice_text[index] = (
+        st.session_state.voice_text.get(
 
-                    voice_text
-                )
+            index,
 
-
-                # -----------------------------------------
-                # IMPORTANT
-                # Rerun BEFORE text widget is created
-                # -----------------------------------------
-
-                st.rerun()
+            ""
+        )
+    )
 
 
-            except sr.UnknownValueError:
+    # IMPORTANT:
+    # We use value= instead of modifying widget state.
+    # This avoids:
+    # st.session_state.answer_0 cannot be modified
+    #
 
-                st.error(
+    answer = st.text_area(
 
-                    "❌ Speech could not be understood. "
-                    "Please speak clearly and try again."
-                )
+        T["text_answer"],
 
+        value=existing_text,
 
-            except sr.RequestError:
+        height=170,
 
-                st.error(
-
-                    "❌ Speech recognition service "
-                    "is temporarily unavailable."
-                )
-
-
-            except Exception as e:
-
-                st.error(
-
-                    f"❌ Voice-to-text failed: {e}"
-                )
+        key=f"answer_box_{index}"
+    )
 
 
-        # =================================================
-        # TEXT ANSWER
-        # =================================================
+    st.divider()
 
-        st.subheader(
-            "📝 Your Answer"
+
+    # =====================================================
+    # NEXT / SUBMIT
+    # =====================================================
+
+    if index < len(questions) - 1:
+
+        button_text = T["next"]
+
+    else:
+
+        button_text = T["submit"]
+
+
+    if st.button(
+
+        button_text,
+
+        key=f"next_{index}",
+
+        use_container_width=True
+    ):
+
+
+        final_answer = answer.strip()
+
+
+        if not final_answer:
+
+            st.warning(
+                T["empty_answer"]
+            )
+
+            st.stop()
+
+
+        # ---------------------------------------------
+        # SAVE ANSWER
+        # ---------------------------------------------
+
+        st.session_state.answers.append(
+
+            {
+                "question":
+                current_question,
+
+                "answer":
+                final_answer
+            }
         )
 
 
-        st.caption(
-
-            "You can edit the converted text "
-            "or type your answer manually."
-        )
-
-
-        answer = st.text_area(
-
-            "⌨️ Answer",
-
-            value=saved_voice_text,
-
-            height=170,
-
-            key=widget_key
-        )
-
-
-        st.divider()
-
-
-        # =================================================
-        # NEXT / SUBMIT
-        # =================================================
+        # ---------------------------------------------
+        # NEXT QUESTION
+        # ---------------------------------------------
 
         if index < len(questions) - 1:
 
-            button_text = (
-                "Next Question ➡️"
-            )
+            st.session_state.current_q_index += 1
+
+            st.session_state.coach_visible = False
+
+            st.rerun()
+
+
+        # ---------------------------------------------
+        # FINAL SUBMIT
+        # ---------------------------------------------
 
         else:
 
-            button_text = (
-                "Submit Interview 🎓"
-            )
+            payload = {
+
+                "name":
+                st.session_state.candidate_name,
+
+                "role":
+                st.session_state.job_role,
+
+                "answers":
+                st.session_state.answers
+            }
 
 
-        if st.button(
+            with st.spinner(
+                "🤖 AI evaluating your interview..."
+            ):
 
-            button_text,
+                try:
 
-            key=f"next_question_{index}",
+                    response = requests.post(
 
-            use_container_width=True
-        ):
+                        f"{BACKEND_URL}/submit-interview",
 
+                        json=payload,
 
-            final_answer = answer.strip()
-
-
-            if not final_answer:
-
-                st.warning(
-
-                    "Please type an answer "
-                    "or record your voice."
-                )
-
-                st.stop()
+                        timeout=120
+                    )
 
 
-            # ---------------------------------------------
-            # SAVE ANSWER
-            # ---------------------------------------------
+                    if response.status_code == 200:
 
-            st.session_state.answers.append(
-
-                {
-                    "question":
-                    current_question,
-
-                    "answer":
-                    final_answer
-                }
-            )
-
-
-            # ---------------------------------------------
-            # NEXT QUESTION
-            # ---------------------------------------------
-
-            if index < len(questions) - 1:
-
-                st.session_state.current_q_index += 1
-
-                st.session_state.coach_visible = False
-
-                st.rerun()
-
-
-            # ---------------------------------------------
-            # FINAL SUBMIT
-            # ---------------------------------------------
-
-            else:
-
-                payload = {
-
-                    "name":
-                    st.session_state.candidate_name,
-
-                    "role":
-                    st.session_state.job_role,
-
-                    "answers":
-                    st.session_state.answers
-                }
-
-
-                with st.spinner(
-
-                    "🤖 AI evaluating interview..."
-                ):
-
-
-                    try:
-
-                        response = requests.post(
-
-                            f"{BACKEND_URL}/submit-interview",
-
-                            json=payload,
-
-                            timeout=120
+                        st.session_state.report = (
+                            response.json()
                         )
 
+                        st.session_state.step = (
+                            "report"
+                        )
 
-                        if response.status_code == 200:
-
-                            st.session_state.report = (
-
-                                response.json()
-                            )
+                        st.rerun()
 
 
-                            st.session_state.step = (
-                                "report"
-                            )
-
-
-                            st.rerun()
-
-
-                        else:
-
-                            st.error(
-
-                                "Report generation failed."
-                            )
-
-                            st.code(
-
-                                response.text
-                            )
-
-
-                    except Exception as e:
+                    else:
 
                         st.error(
-
-                            f"Connection error: {e}"
+                            "Report generation failed."
                         )
+
+                        st.code(
+                            response.text
+                        )
+
+
+                except Exception as e:
+
+                    st.error(
+                        f"Connection error: {e}"
+                    )
 
 
 # =========================================================
@@ -1284,7 +1311,6 @@ elif st.session_state.step == "report":
 
 
     st.success(
-
         "🎉 Interview Completed Successfully!"
     )
 
@@ -1320,20 +1346,16 @@ elif st.session_state.step == "report":
     # =====================================================
 
     st.subheader(
-        "📊 Performance Report"
+        T["report"]
     )
 
 
     percentage = float(
 
         str(
-
             report["percentage"]
-
         ).replace(
-
             "%",
-
             ""
         )
     )
@@ -1352,7 +1374,6 @@ elif st.session_state.step == "report":
         "Questions",
 
         len(
-
             report["detailed_feedback"]
         )
     )
@@ -1375,6 +1396,9 @@ elif st.session_state.step == "report":
     )
 
 
+    st.divider()
+
+
     # =====================================================
     # RECOMMENDATION
     # =====================================================
@@ -1390,7 +1414,6 @@ elif st.session_state.step == "report":
     ):
 
         st.success(
-
             f"🏆 {recommendation}"
         )
 
@@ -1401,7 +1424,6 @@ elif st.session_state.step == "report":
     ):
 
         st.info(
-
             f"👍 {recommendation}"
         )
 
@@ -1412,7 +1434,6 @@ elif st.session_state.step == "report":
     ):
 
         st.warning(
-
             f"⚠️ {recommendation}"
         )
 
@@ -1420,26 +1441,16 @@ elif st.session_state.step == "report":
     else:
 
         st.error(
-
             f"❌ {recommendation}"
         )
 
 
-    st.divider()
-
-
     # =====================================================
-    # AI FEEDBACK
+    # FEEDBACK
     # =====================================================
 
     st.subheader(
-        "💡 AI Feedback"
-    )
-
-
-    st.caption(
-
-        "AI evaluation for each interview answer."
+        T["feedback"]
     )
 
 
@@ -1447,52 +1458,41 @@ elif st.session_state.step == "report":
         "detailed_feedback"
     ]:
 
+        with st.expander(
+            f"❓ {item['question']}"
+        ):
 
-        st.markdown(
+            st.write(
+                "📝 **Your Answer:**"
+            )
 
-            f"### ❓ {item['question']}"
-        )
-
-
-        st.write(
-
-            "📝 **Your Answer:**"
-        )
-
-
-        st.write(
-
-            item["answer"]
-        )
+            st.write(
+                item["answer"]
+            )
 
 
-        st.write(
+            st.write(
+                f"⭐ **Score:** "
+                f"{item['score']} / 5"
+            )
 
-            f"⭐ **Score:** "
-            f"{item['score']} / 5"
-        )
 
-
-        st.success(
-
-            item["feedback"]
-        )
+            st.success(
+                item["feedback"]
+            )
 
 
     st.divider()
 
 
     # =====================================================
-    # PDF REPORT
+    # PDF
     # =====================================================
 
     if st.button(
-
         "📄 Generate PDF Report",
-
         use_container_width=True
     ):
-
 
         try:
 
@@ -1531,15 +1531,12 @@ elif st.session_state.step == "report":
 
 
             st.success(
-
                 "✅ PDF Report Generated!"
             )
 
 
             with open(
-
                 pdf_file,
-
                 "rb"
             ) as file:
 
@@ -1558,7 +1555,6 @@ elif st.session_state.step == "report":
         except Exception as e:
 
             st.error(
-
                 f"PDF generation failed: {e}"
             )
 
@@ -1569,11 +1565,10 @@ elif st.session_state.step == "report":
 
     if st.button(
 
-        "🔄 Restart Interview",
+        T["restart"],
 
         use_container_width=True
     ):
-
 
         st.session_state.step = "upload"
 
@@ -1592,6 +1587,5 @@ elif st.session_state.step == "report":
         st.session_state.voice_text = {}
 
         st.session_state.coach_visible = False
-
 
         st.rerun()
